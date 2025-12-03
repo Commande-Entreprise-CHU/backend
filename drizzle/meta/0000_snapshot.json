@@ -1,0 +1,107 @@
+{
+  "id": "4890a875-88eb-4942-b72c-295d7ba2805b",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.patients": {
+      "name": "patients",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prenom": {
+          "name": "prenom",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ipp": {
+          "name": "ipp",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dob": {
+          "name": "dob",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sexe": {
+          "name": "sexe",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pre_consult": {
+          "name": "pre_consult",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pre_op": {
+          "name": "pre_op",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "post_op_3": {
+          "name": "post_op_3",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "post_op_6": {
+          "name": "post_op_6",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
