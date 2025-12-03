@@ -6,8 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/index.ts",
+    "dev:debug": "DEBUG=true tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:debug": "DEBUG=true node dist/index.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push"
@@ -21,9 +23,8 @@
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
     "express": "^5.2.1",
-    "fs-extra": "^11.3.2",
     "pg": "^8.16.3",
-    "uuid": "^13.0.0"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

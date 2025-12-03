@@ -15,6 +15,13 @@
       "when": 1764795363681,
       "tag": "0001_curved_spyke",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1764797209125,
+      "tag": "0002_colossal_pepper_potts",
+      "breakpoints": true
     }
   ]
 }

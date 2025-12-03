@@ -17,7 +17,6 @@ router.get("/search", searchPatients);
 router.get("/patient/:id", getPatientById);
 router.put("/patient/:id", updatePatientSection);
 
-// Specific section updates
 router.put("/patient/:id/preconsult", updatePreConsult);
 router.put("/patient/:id/preop", updatePreOp);
 router.put("/patient/:id/postop3", updatePostOp3);

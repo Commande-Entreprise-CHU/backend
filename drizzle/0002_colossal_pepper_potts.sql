@@ -1,0 +1,1 @@
+ALTER TABLE "patients" ALTER COLUMN "dob" SET DATA TYPE date USING "dob"::date;

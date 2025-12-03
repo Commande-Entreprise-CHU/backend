@@ -1,60 +1,65 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { patients, preConsultations, preOpConsultations, postOp3Consultations, postOp6Consultations } from "../db/schema";
+import {
+  patients,
+  preConsultations,
+  preOpConsultations,
+  postOp3Consultations,
+  postOp6Consultations,
+} from "../db/schema";
 import { eq, and, ilike, or } from "drizzle-orm";
+import { patientSchema } from "../validation/patientSchema";
+import { generateSchemaFromConfig } from "../validation/dynamicSchema";
+import PremConsultConfig from "../../../frontend/src/utils/json/PremConsult.json";
+import PreOpConfig from "../../../frontend/src/utils/json/PreOp.json";
+import PostOp3Config from "../../../frontend/src/utils/json/PostOp3.json";
+import PostOp6Config from "../../../frontend/src/utils/json/PostOp6.json";
 
 export const createPatient = async (req: Request, res: Response) => {
   try {
-    const form = req.body;
+    const validationResult = patientSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Données patient invalides.",
+        errors: validationResult.error.flatten().fieldErrors,
+      });
+    }
 
-    // 1. Check for duplicates
+    const patientData = validationResult.data;
+
     const existing = await db.query.patients.findFirst({
       where: and(
-        ilike(patients.name, form.name),
-        ilike(patients.prenom, form.prenom),
-        eq(patients.dob, form.dob)
+        ilike(patients.name, patientData.name),
+        ilike(patients.prenom, patientData.prenom),
+        eq(patients.dob, patientData.dob)
       ),
     });
 
     if (existing) {
-      res.json({
+      return res.json({
         success: false,
         duplicate: true,
         patient: existing,
         message: "Le patient existe déjà.",
       });
-      return;
     }
 
-    // 2. Create new patient and preConsult in a transaction
-    const result = await db.transaction(async (tx) => {
-      const [newPatient] = await tx.insert(patients).values({
-        name: form.name,
-        prenom: form.prenom,
-        ipp: form.ipp || null,
-        dob: form.dob,
-        sexe: form.sexe,
-      }).returning();
-
-      // Create empty or initial records for consultations if needed, 
-      // or just the preConsult which seems to be part of the creation form
-      if (form) {
-        await tx.insert(preConsultations).values({
-          patientId: newPatient.id,
-          data: form,
-        });
-      }
-
-      return newPatient;
-    });
-
-    // Fetch the full patient object to return
-    const fullPatient = await getPatientData(result.id);
+    const [newPatient] = await db
+      .insert(patients)
+      .values({
+        name: patientData.name,
+        prenom: patientData.prenom,
+        ipp: patientData.ipp || null,
+        dob: patientData.dob,
+        sexe: patientData.sexe,
+      })
+      .returning();
 
     res.json({
       success: true,
       duplicate: false,
-      patient: fullPatient,
+      patient: newPatient,
     });
   } catch (error) {
     console.error(error);
@@ -67,7 +72,7 @@ export const createPatient = async (req: Request, res: Response) => {
 
 export const searchPatients = async (req: Request, res: Response) => {
   try {
-    const q = (req.query.q as string || "").toLowerCase().trim();
+    const q = ((req.query.q as string) || "").toLowerCase().trim();
 
     if (!q) {
       const allPatients = await db.select().from(patients);
@@ -75,14 +80,17 @@ export const searchPatients = async (req: Request, res: Response) => {
       return;
     }
 
-    const filtered = await db.select().from(patients).where(
-      or(
-        ilike(patients.name, `%${q}%`),
-        ilike(patients.prenom, `%${q}%`),
-        ilike(patients.ipp, `%${q}%`),
-        ilike(patients.sexe, `%${q}%`)
-      )
-    );
+    const filtered = await db
+      .select()
+      .from(patients)
+      .where(
+        or(
+          ilike(patients.name, `%${q}%`),
+          ilike(patients.prenom, `%${q}%`),
+          ilike(patients.ipp, `%${q}%`),
+          ilike(patients.sexe, `%${q}%`)
+        )
+      );
 
     res.json(filtered);
   } catch (error) {
@@ -108,7 +116,6 @@ export const getPatientById = async (req: Request, res: Response) => {
   }
 };
 
-// Helper to fetch and format patient data
 const getPatientData = async (id: string) => {
   const patient = await db.query.patients.findFirst({
     where: eq(patients.id, id),
@@ -122,7 +129,6 @@ const getPatientData = async (id: string) => {
 
   if (!patient) return null;
 
-  // Flatten the structure for frontend compatibility
   return {
     ...patient,
     preConsult: patient.preConsult?.data || null,
@@ -138,37 +144,78 @@ export const updatePatientSection = async (req: Request, res: Response) => {
     const { section, values } = req.body;
 
     if (!["preConsult", "preOp", "postOp3", "postOp6"].includes(section)) {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: "Section invalide",
       });
-      return;
     }
+
+    let config;
+    switch (section) {
+      case "preConsult":
+        config = PremConsultConfig;
+        break;
+      case "preOp":
+        config = PreOpConfig;
+        break;
+      case "postOp3":
+        config = PostOp3Config;
+        break;
+      case "postOp6":
+        config = PostOp6Config;
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: "Schema de validation non trouvé pour cette section",
+        });
+    }
+
+    const schema = generateSchemaFromConfig(config as any).partial();
+    const validationResult = schema.safeParse(values);
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Données invalides.",
+        errors: validationResult.error.flatten().fieldErrors,
+      });
+    }
+
+    const validatedValues = validationResult.data as any;
 
     let table;
     switch (section) {
-      case "preConsult": table = preConsultations; break;
-      case "preOp": table = preOpConsultations; break;
-      case "postOp3": table = postOp3Consultations; break;
-      case "postOp6": table = postOp6Consultations; break;
-      default: throw new Error("Invalid section");
+      case "preConsult":
+        table = preConsultations;
+        break;
+      case "preOp":
+        table = preOpConsultations;
+        break;
+      case "postOp3":
+        table = postOp3Consultations;
+        break;
+
+      case "postOp6":
+        table = postOp6Consultations;
+        break;
+      default:
+        throw new Error("Invalid section");
     }
 
-    // Upsert logic
-    await db.insert(table)
+    await db
+      .insert(table)
       .values({
         patientId: id,
-        data: values,
+        data: validatedValues,
       })
       .onConflictDoUpdate({
         target: table.patientId,
         set: {
-          data: values,
+          data: validatedValues,
           updatedAt: new Date(),
         },
       });
 
-    // Return the updated patient
     const updatedPatient = await getPatientData(id);
 
     res.json({ success: true, patient: updatedPatient });
@@ -181,7 +228,6 @@ export const updatePatientSection = async (req: Request, res: Response) => {
   }
 };
 
-// Specific update handlers
 export const updatePreConsult = async (req: Request, res: Response) => {
   await updateSpecificSection(req, res, "preConsult");
 };
@@ -198,30 +244,75 @@ export const updatePostOp6 = async (req: Request, res: Response) => {
   await updateSpecificSection(req, res, "postOp6");
 };
 
-const updateSpecificSection = async (req: Request, res: Response, section: "preConsult" | "preOp" | "postOp3" | "postOp6") => {
+const updateSpecificSection = async (
+  req: Request,
+  res: Response,
+  section: "preConsult" | "preOp" | "postOp3" | "postOp6"
+) => {
   try {
     const { id } = req.params;
     const data = req.body;
 
-    // Reuse the logic from updatePatientSection but adapted
-    let table;
+    let config;
     switch (section) {
-      case "preConsult": table = preConsultations; break;
-      case "preOp": table = preOpConsultations; break;
-      case "postOp3": table = postOp3Consultations; break;
-      case "postOp6": table = postOp6Consultations; break;
-      default: throw new Error("Invalid section");
+      case "preConsult":
+        config = PremConsultConfig;
+        break;
+      case "preOp":
+        config = PreOpConfig;
+        break;
+      case "postOp3":
+        config = PostOp3Config;
+        break;
+      case "postOp6":
+        config = PostOp6Config;
+        break;
+      default:
+        return res
+          .status(400)
+          .json({ message: "Schema de validation non trouvé" });
     }
 
-    await db.insert(table)
+    const schema = generateSchemaFromConfig(config as any).partial();
+    const validationResult = schema.safeParse(data);
+
+    if (!validationResult.success) {
+      return res.status(400).json({
+        message: "Données invalides.",
+        errors: validationResult.error.flatten().fieldErrors,
+      });
+    }
+
+    const validatedData = validationResult.data as any;
+
+    let table;
+    switch (section) {
+      case "preConsult":
+        table = preConsultations;
+        break;
+      case "preOp":
+        table = preOpConsultations;
+        break;
+      case "postOp3":
+        table = postOp3Consultations;
+        break;
+      case "postOp6":
+        table = postOp6Consultations;
+        break;
+      default:
+        throw new Error("Invalid section");
+    }
+
+    await db
+      .insert(table)
       .values({
         patientId: id,
-        data: data,
+        data: validatedData,
       })
       .onConflictDoUpdate({
         target: table.patientId,
         set: {
-          data: data,
+          data: validatedData,
           updatedAt: new Date(),
         },
       });
