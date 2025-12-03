@@ -9,11 +9,6 @@ import {
 } from "../db/schema";
 import { eq, and, ilike, or } from "drizzle-orm";
 import { patientSchema } from "../validation/patientSchema";
-import { generateSchemaFromConfig } from "../validation/dynamicSchema";
-import PremConsultConfig from "../../../frontend/src/utils/json/PremConsult.json";
-import PreOpConfig from "../../../frontend/src/utils/json/PreOp.json";
-import PostOp3Config from "../../../frontend/src/utils/json/PostOp3.json";
-import PostOp6Config from "../../../frontend/src/utils/json/PostOp6.json";
 
 export const createPatient = async (req: Request, res: Response) => {
   try {
@@ -150,38 +145,15 @@ export const updatePatientSection = async (req: Request, res: Response) => {
       });
     }
 
-    let config;
-    switch (section) {
-      case "preConsult":
-        config = PremConsultConfig;
-        break;
-      case "preOp":
-        config = PreOpConfig;
-        break;
-      case "postOp3":
-        config = PostOp3Config;
-        break;
-      case "postOp6":
-        config = PostOp6Config;
-        break;
-      default:
-        return res.status(400).json({
-          success: false,
-          message: "Schema de validation non trouvé pour cette section",
-        });
-    }
-
-    const schema = generateSchemaFromConfig(config as any).partial();
-    const validationResult = schema.safeParse(values);
-    if (!validationResult.success) {
+    // Validation générique pour accepter tout objet JSON
+    if (!values || typeof values !== "object") {
       return res.status(400).json({
         success: false,
         message: "Données invalides.",
-        errors: validationResult.error.flatten().fieldErrors,
       });
     }
 
-    const validatedValues = validationResult.data as any;
+    const validatedValues = values;
 
     let table;
     switch (section) {
@@ -253,37 +225,14 @@ const updateSpecificSection = async (
     const { id } = req.params;
     const data = req.body;
 
-    let config;
-    switch (section) {
-      case "preConsult":
-        config = PremConsultConfig;
-        break;
-      case "preOp":
-        config = PreOpConfig;
-        break;
-      case "postOp3":
-        config = PostOp3Config;
-        break;
-      case "postOp6":
-        config = PostOp6Config;
-        break;
-      default:
-        return res
-          .status(400)
-          .json({ message: "Schema de validation non trouvé" });
-    }
-
-    const schema = generateSchemaFromConfig(config as any).partial();
-    const validationResult = schema.safeParse(data);
-
-    if (!validationResult.success) {
+    // Validation générique pour accepter tout objet JSON
+    if (!data || typeof data !== "object") {
       return res.status(400).json({
         message: "Données invalides.",
-        errors: validationResult.error.flatten().fieldErrors,
       });
     }
 
-    const validatedData = validationResult.data as any;
+    const validatedData = data;
 
     let table;
     switch (section) {
