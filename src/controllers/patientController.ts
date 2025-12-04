@@ -2,10 +2,8 @@ import { Request, Response } from "express";
 import { db } from "../db";
 import {
   patients,
-  preConsultations,
-  preOpConsultations,
-  postOp3Consultations,
-  postOp6Consultations,
+  patientConsultations,
+  consultationTypes,
 } from "../db/schema";
 import { eq, and, ilike, or } from "drizzle-orm";
 import { patientSchema } from "../validation/patientSchema";
@@ -114,36 +112,34 @@ export const getPatientById = async (req: Request, res: Response) => {
 const getPatientData = async (id: string) => {
   const patient = await db.query.patients.findFirst({
     where: eq(patients.id, id),
-    with: {
-      preConsult: true,
-      preOp: true,
-      postOp3: true,
-      postOp6: true,
-    },
   });
 
   if (!patient) return null;
 
+  // Fetch dynamic consultations
+  const consultations = await db.query.patientConsultations.findMany({
+    where: eq(patientConsultations.patientId, id),
+    with: {
+      type: true,
+    },
+  });
+
+  const consultationsMap: Record<string, any> = {};
+
+  consultations.forEach((c) => {
+    consultationsMap[c.type.slug] = c.data;
+  });
+
   return {
     ...patient,
-    preConsult: patient.preConsult?.data || null,
-    preOp: patient.preOp?.data || null,
-    postOp3: patient.postOp3?.data || null,
-    postOp6: patient.postOp6?.data || null,
+    consultations: consultationsMap,
   };
 };
 
 export const updatePatientSection = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { section, values } = req.body;
-
-    if (!["preConsult", "preOp", "postOp3", "postOp6"].includes(section)) {
-      return res.status(400).json({
-        success: false,
-        message: "Section invalide",
-      });
-    }
+    const { values, consultationTypeId } = req.body;
 
     // Validation générique pour accepter tout objet JSON
     if (!values || typeof values !== "object") {
@@ -153,37 +149,27 @@ export const updatePatientSection = async (req: Request, res: Response) => {
       });
     }
 
-    const validatedValues = values;
-
-    let table;
-    switch (section) {
-      case "preConsult":
-        table = preConsultations;
-        break;
-      case "preOp":
-        table = preOpConsultations;
-        break;
-      case "postOp3":
-        table = postOp3Consultations;
-        break;
-
-      case "postOp6":
-        table = postOp6Consultations;
-        break;
-      default:
-        throw new Error("Invalid section");
+    if (!consultationTypeId) {
+      return res.status(400).json({
+        success: false,
+        message: "ID du type de consultation manquant.",
+      });
     }
 
     await db
-      .insert(table)
+      .insert(patientConsultations)
       .values({
         patientId: id,
-        data: validatedValues,
+        consultationTypeId,
+        data: values,
       })
       .onConflictDoUpdate({
-        target: table.patientId,
+        target: [
+          patientConsultations.patientId,
+          patientConsultations.consultationTypeId,
+        ],
         set: {
-          data: validatedValues,
+          data: values,
           updatedAt: new Date(),
         },
       });
@@ -197,84 +183,5 @@ export const updatePatientSection = async (req: Request, res: Response) => {
       success: false,
       message: "Erreur interne",
     });
-  }
-};
-
-export const updatePreConsult = async (req: Request, res: Response) => {
-  await updateSpecificSection(req, res, "preConsult");
-};
-
-export const updatePreOp = async (req: Request, res: Response) => {
-  await updateSpecificSection(req, res, "preOp");
-};
-
-export const updatePostOp3 = async (req: Request, res: Response) => {
-  await updateSpecificSection(req, res, "postOp3");
-};
-
-export const updatePostOp6 = async (req: Request, res: Response) => {
-  await updateSpecificSection(req, res, "postOp6");
-};
-
-const updateSpecificSection = async (
-  req: Request,
-  res: Response,
-  section: "preConsult" | "preOp" | "postOp3" | "postOp6"
-) => {
-  try {
-    const { id } = req.params;
-    const data = req.body;
-
-    // Validation générique pour accepter tout objet JSON
-    if (!data || typeof data !== "object") {
-      return res.status(400).json({
-        message: "Données invalides.",
-      });
-    }
-
-    const validatedData = data;
-
-    let table;
-    switch (section) {
-      case "preConsult":
-        table = preConsultations;
-        break;
-      case "preOp":
-        table = preOpConsultations;
-        break;
-      case "postOp3":
-        table = postOp3Consultations;
-        break;
-      case "postOp6":
-        table = postOp6Consultations;
-        break;
-      default:
-        throw new Error("Invalid section");
-    }
-
-    await db
-      .insert(table)
-      .values({
-        patientId: id,
-        data: validatedData,
-      })
-      .onConflictDoUpdate({
-        target: table.patientId,
-        set: {
-          data: validatedData,
-          updatedAt: new Date(),
-        },
-      });
-
-    const updatedPatient = await getPatientData(id);
-    if (!updatedPatient) {
-      res.status(404).json({ message: "Not found" });
-      return;
-    }
-
-    res.json({ success: true, data: updatedPatient });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error updating section" });
   }
 };

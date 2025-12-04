@@ -1,4 +1,15 @@
-import { pgTable, uuid, varchar, jsonb, timestamp, date } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  varchar,
+  jsonb,
+  timestamp,
+  date,
+  boolean,
+  text,
+  integer,
+  unique,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const patients = pgTable("patients", {
@@ -12,105 +23,73 @@ export const patients = pgTable("patients", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const patientsRelations = relations(patients, ({ one }) => ({
-  preConsult: one(preConsultations, {
-    fields: [patients.id],
-    references: [preConsultations.patientId],
-  }),
-  preOp: one(preOpConsultations, {
-    fields: [patients.id],
-    references: [preOpConsultations.patientId],
-  }),
-  postOp3: one(postOp3Consultations, {
-    fields: [patients.id],
-    references: [postOp3Consultations.patientId],
-  }),
-  postOp6: one(postOp6Consultations, {
-    fields: [patients.id],
-    references: [postOp6Consultations.patientId],
-  }),
-}));
-
-export const preConsultations = pgTable("pre_consultations", {
+export const consultationTypes = pgTable("consultation_types", {
   id: uuid("id").defaultRandom().primaryKey(),
-  patientId: uuid("patient_id")
-    .references(() => patients.id)
-    .notNull()
-    .unique(),
-  data: jsonb("data"),
+  slug: varchar("slug", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  order: integer("order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const preConsultationsRelations = relations(
-  preConsultations,
+export const consultationTemplates = pgTable("consultation_templates", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  consultationTypeId: uuid("consultation_type_id")
+    .references(() => consultationTypes.id)
+    .notNull(),
+  version: varchar("version", { length: 50 }).notNull(),
+  structure: jsonb("structure").notNull(),
+  template: text("template").notNull(),
+  isActive: boolean("is_active").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const consultationTypesRelations = relations(
+  consultationTypes,
+  ({ many }) => ({
+    templates: many(consultationTemplates),
+  })
+);
+
+export const consultationTemplatesRelations = relations(
+  consultationTemplates,
   ({ one }) => ({
-    patient: one(patients, {
-      fields: [preConsultations.patientId],
-      references: [patients.id],
+    type: one(consultationTypes, {
+      fields: [consultationTemplates.consultationTypeId],
+      references: [consultationTypes.id],
     }),
   })
 );
 
-export const preOpConsultations = pgTable("pre_op_consultations", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  patientId: uuid("patient_id")
-    .references(() => patients.id)
-    .notNull()
-    .unique(),
-  data: jsonb("data"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const preOpConsultationsRelations = relations(
-  preOpConsultations,
-  ({ one }) => ({
-    patient: one(patients, {
-      fields: [preOpConsultations.patientId],
-      references: [patients.id],
-    }),
+export const patientConsultations = pgTable(
+  "patient_consultations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    patientId: uuid("patient_id")
+      .references(() => patients.id)
+      .notNull(),
+    consultationTypeId: uuid("consultation_type_id")
+      .references(() => consultationTypes.id)
+      .notNull(),
+    data: jsonb("data"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => ({
+    unq: unique().on(t.patientId, t.consultationTypeId),
   })
 );
 
-export const postOp3Consultations = pgTable("post_op_3_consultations", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  patientId: uuid("patient_id")
-    .references(() => patients.id)
-    .notNull()
-    .unique(),
-  data: jsonb("data"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const postOp3ConsultationsRelations = relations(
-  postOp3Consultations,
+export const patientConsultationsRelations = relations(
+  patientConsultations,
   ({ one }) => ({
     patient: one(patients, {
-      fields: [postOp3Consultations.patientId],
+      fields: [patientConsultations.patientId],
       references: [patients.id],
     }),
-  })
-);
-
-export const postOp6Consultations = pgTable("post_op_6_consultations", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  patientId: uuid("patient_id")
-    .references(() => patients.id)
-    .notNull()
-    .unique(),
-  data: jsonb("data"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const postOp6ConsultationsRelations = relations(
-  postOp6Consultations,
-  ({ one }) => ({
-    patient: one(patients, {
-      fields: [postOp6Consultations.patientId],
-      references: [patients.id],
+    type: one(consultationTypes, {
+      fields: [patientConsultations.consultationTypeId],
+      references: [consultationTypes.id],
     }),
   })
 );

@@ -1,0 +1,1 @@
+ALTER TABLE "consultation_types" ADD COLUMN "order" integer DEFAULT 0;

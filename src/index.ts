@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import patientRoutes from "./routes/patientRoutes";
+import templateRoutes from "./routes/templateRoutes";
 
 dotenv.config();
 
@@ -63,6 +64,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", patientRoutes);
+app.use("/api/templates", templateRoutes);
 
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
