@@ -35,26 +35,29 @@ if (DEBUG) {
   });
 }
 
-const allowedOrigins = process.env.CLIENT_URL
-  ? process.env.CLIENT_URL.split(",").map((url) => url.trim())
-  : ["http://localhost:5173"];
+// const allowedOrigins = process.env.CLIENT_URL
+//   ? process.env.CLIENT_URL.split(",").map((url) => url.trim())
+//   : ["http://localhost:5173"];
 
-console.log("Allowed Origins for CORS:", allowedOrigins);
+// console.log("Allowed Origins for CORS:", allowedOrigins);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+// app.use(
+//   cors({
+//     origin: (origin, callback) => {
+//       if (!origin || allowedOrigins.includes(origin)) {
+//         callback(null, true);
+//       } else {
+//         callback(new Error("Not allowed by CORS"));
+//       }
+//     },
+//     credentials: true,
+//     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//     allowedHeaders: ["Content-Type", "Authorization"],
+//   })
+// );
+
+// Allow all origins in development
+app.use(cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
