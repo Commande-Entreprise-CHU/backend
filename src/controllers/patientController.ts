@@ -65,9 +65,40 @@ export const createPatient = async (req: Request, res: Response) => {
 
 export const searchPatients = async (req: Request, res: Response) => {
   try {
-    const q = ((req.query.q as string) || "").toLowerCase().trim();
+    const { name, sexe, ipp, q } = req.query;
 
-    if (!q) {
+    const conditions = [];
+
+    if (q && typeof q === "string" && q.trim()) {
+      const search = `%${q.toLowerCase().trim()}%`;
+      conditions.push(
+        or(
+          ilike(patients.name, search),
+          ilike(patients.prenom, search),
+          ilike(patients.ipp, search),
+          ilike(patients.sexe, search)
+        )
+      );
+    } else {
+      if (name && typeof name === "string" && name.trim()) {
+        conditions.push(
+          or(
+            ilike(patients.name, `%${name.trim()}%`),
+            ilike(patients.prenom, `%${name.trim()}%`)
+          )
+        );
+      }
+      if (sexe && typeof sexe === "string" && sexe.trim()) {
+        conditions.push(eq(patients.sexe, sexe.trim()));
+      }
+      if (ipp && typeof ipp === "string" && ipp.trim()) {
+        conditions.push(ilike(patients.ipp, `%${ipp.trim()}%`));
+      }
+    }
+
+    if (conditions.length === 0) {
+      // If no filters, return all (or maybe limit?)
+      // For now, let's return all as per original behavior if q was empty
       const allPatients = await db.select().from(patients);
       res.json(allPatients);
       return;
@@ -76,14 +107,7 @@ export const searchPatients = async (req: Request, res: Response) => {
     const filtered = await db
       .select()
       .from(patients)
-      .where(
-        or(
-          ilike(patients.name, `%${q}%`),
-          ilike(patients.prenom, `%${q}%`),
-          ilike(patients.ipp, `%${q}%`),
-          ilike(patients.sexe, `%${q}%`)
-        )
-      );
+      .where(and(...conditions));
 
     res.json(filtered);
   } catch (error) {
