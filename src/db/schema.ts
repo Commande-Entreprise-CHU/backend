@@ -9,8 +9,22 @@ import {
   text,
   integer,
   unique,
+  customType,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import { encrypt, decrypt } from "../utils/crypto";
+
+const encryptedJson = customType<{ data: any; driverData: string }>({
+  dataType() {
+    return "text";
+  },
+  toDriver(value: any): string {
+    return encrypt(value);
+  },
+  fromDriver(value: string): any {
+    return decrypt(value);
+  },
+});
 
 export const patients = pgTable("patients", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -61,6 +75,17 @@ export const consultationTemplatesRelations = relations(
   })
 );
 
+// HDS: Audit Logs for traceability
+export const auditLogs = pgTable("audit_logs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: varchar("user_id", { length: 255 }), // Nullable if system action or unauthenticated (should be avoided)
+  action: varchar("action", { length: 50 }).notNull(), // READ, WRITE, DELETE, LOGIN
+  resource: varchar("resource", { length: 100 }).notNull(), // /api/patient/123
+  details: jsonb("details"), // Metadata (IP, UserAgent, etc.) - NO SENSITIVE DATA
+  status: varchar("status", { length: 20 }).notNull(), // SUCCESS, FAILURE
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const patientConsultations = pgTable(
   "patient_consultations",
   {
@@ -71,7 +96,7 @@ export const patientConsultations = pgTable(
     consultationTypeId: uuid("consultation_type_id")
       .references(() => consultationTypes.id)
       .notNull(),
-    data: jsonb("data"),
+    data: encryptedJson("data"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

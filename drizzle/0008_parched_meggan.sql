@@ -1,0 +1,1 @@
+ALTER TABLE "patient_consultations" ALTER COLUMN "data" SET DATA TYPE text;

@@ -57,6 +57,20 @@
       "when": 1764841013385,
       "tag": "0007_safe_masked_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1765476795062,
+      "tag": "0008_parched_meggan",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1765477200140,
+      "tag": "0009_sturdy_chronomancer",
+      "breakpoints": true
     }
   ]
 }
