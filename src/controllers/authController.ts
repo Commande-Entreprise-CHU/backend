@@ -47,7 +47,7 @@ export const login = async (req: Request, res: Response) => {
     res.cookie(AUTH_COOKIE_NAME, token, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: "lax",
+      sameSite: isProduction ? "none" : "lax",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000,
     });
@@ -74,7 +74,7 @@ export const logout = async (req: Request, res: Response) => {
   res.clearCookie(AUTH_COOKIE_NAME, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "lax",
+    sameSite: isProduction ? "none" : "lax",
     path: "/",
   });
   res.json({ success: true });
