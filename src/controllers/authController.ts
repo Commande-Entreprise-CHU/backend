@@ -26,13 +26,11 @@ export const login = async (req: Request, res: Response) => {
     }
 
     if (!user.isActive) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message:
-            "Votre compte est en attente de validation par un administrateur.",
-        });
+      return res.status(403).json({
+        success: false,
+        message:
+          "Votre compte est en attente de validation par un administrateur.",
+      });
     }
 
     const token = generateToken({

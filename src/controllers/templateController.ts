@@ -12,7 +12,9 @@ export const getConsultationTypes = async (req: Request, res: Response) => {
     res.json(types);
   } catch (error) {
     console.error("Error fetching consultation types:", error);
-    res.status(500).json({ error: "Failed to fetch consultation types" });
+    res
+      .status(500)
+      .json({ error: "Échec de la récupération des types de consultation" });
   }
 };
 
@@ -26,7 +28,9 @@ export const createConsultationType = async (req: Request, res: Response) => {
     res.json(newType);
   } catch (error) {
     console.error("Error creating consultation type:", error);
-    res.status(500).json({ error: "Failed to create consultation type" });
+    res
+      .status(500)
+      .json({ error: "Échec de la création du type de consultation" });
   }
 };
 
@@ -42,13 +46,15 @@ export const updateConsultationType = async (req: Request, res: Response) => {
       .returning();
 
     if (!updatedType) {
-      return res.status(404).json({ error: "Consultation type not found" });
+      return res.status(404).json({ error: "Type de consultation non trouvé" });
     }
 
     res.json(updatedType);
   } catch (error) {
     console.error("Error updating consultation type:", error);
-    res.status(500).json({ error: "Failed to update consultation type" });
+    res
+      .status(500)
+      .json({ error: "Échec de la mise à jour du type de consultation" });
   }
 };
 
@@ -63,7 +69,7 @@ export const getTemplatesByType = async (req: Request, res: Response) => {
     res.json(templates);
   } catch (error) {
     console.error("Error fetching templates:", error);
-    res.status(500).json({ error: "Failed to fetch templates" });
+    res.status(500).json({ error: "Échec de la récupération des modèles" });
   }
 };
 
@@ -94,7 +100,9 @@ export const createTemplateVersion = async (req: Request, res: Response) => {
     res.json(newTemplate);
   } catch (error) {
     console.error("Error creating template version:", error);
-    res.status(500).json({ error: "Failed to create template version" });
+    res
+      .status(500)
+      .json({ error: "Échec de la création de la version du modèle" });
   }
 };
 
