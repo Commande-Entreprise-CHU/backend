@@ -26,15 +26,38 @@ const encryptedJson = customType<{ data: any; driverData: string }>({
   },
 });
 
+const encryptedText = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return "text";
+  },
+  toDriver(value: string): string {
+    return encrypt(value);
+  },
+  fromDriver(value: string): string {
+    return decrypt(value);
+  },
+});
+
 export const patients = pgTable("patients", {
   id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  prenom: varchar("prenom", { length: 255 }).notNull(),
-  ipp: varchar("ipp", { length: 50 }),
-  dob: date("dob").notNull(),
+  name: encryptedText("name").notNull(),
+  prenom: encryptedText("prenom").notNull(),
+  ipp: encryptedText("ipp"),
+  dob: encryptedText("dob").notNull(), // Storing date as encrypted string
   sexe: varchar("sexe", { length: 20 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const users = pgTable("users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  password: varchar("password", { length: 255 }).notNull(),
+  nom: varchar("nom", { length: 100 }).notNull(),
+  prenom: varchar("prenom", { length: 100 }).notNull(),
+  role: varchar("role", { length: 20 }).default("user"),
+  isActive: boolean("is_active").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const consultationTypes = pgTable("consultation_types", {

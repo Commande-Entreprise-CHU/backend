@@ -21,13 +21,15 @@ export const createPatient = async (req: Request, res: Response) => {
 
     const patientData = validationResult.data;
 
-    const existing = await db.query.patients.findFirst({
-      where: and(
-        ilike(patients.name, patientData.name),
-        ilike(patients.prenom, patientData.prenom),
-        eq(patients.dob, patientData.dob)
-      ),
-    });
+    // HDS: Fetch all and filter in memory because fields are encrypted with random IV
+    const allPatients = await db.query.patients.findMany();
+
+    const existing = allPatients.find(
+      (p) =>
+        p.name.toLowerCase() === patientData.name.toLowerCase() &&
+        p.prenom.toLowerCase() === patientData.prenom.toLowerCase() &&
+        p.dob === patientData.dob
+    );
 
     if (existing) {
       return res.json({
@@ -67,52 +69,48 @@ export const searchPatients = async (req: Request, res: Response) => {
   try {
     const { name, sexe, ipp, q } = req.query;
 
-    const conditions = [];
+    // HDS: Fetch all and filter in memory because fields are encrypted
+    const allPatients = await db.query.patients.findMany();
 
-    if (q && typeof q === "string" && q.trim()) {
-      const search = `%${q.toLowerCase().trim()}%`;
-      conditions.push(
-        or(
-          ilike(patients.name, search),
-          ilike(patients.prenom, search),
-          ilike(patients.ipp, search),
-          ilike(patients.sexe, search)
-        )
-      );
-    } else {
-      if (name && typeof name === "string" && name.trim()) {
-        conditions.push(
-          or(
-            ilike(patients.name, `%${name.trim()}%`),
-            ilike(patients.prenom, `%${name.trim()}%`)
-          )
+    const filteredPatients = allPatients.filter((p) => {
+      if (q && typeof q === "string" && q.trim()) {
+        const search = q.toLowerCase().trim();
+        return (
+          p.name.toLowerCase().includes(search) ||
+          p.prenom.toLowerCase().includes(search) ||
+          (p.ipp && p.ipp.toLowerCase().includes(search)) ||
+          p.sexe.toLowerCase().includes(search)
         );
       }
+
+      let match = true;
+      if (name && typeof name === "string" && name.trim()) {
+        const search = name.toLowerCase().trim();
+        match =
+          match &&
+          (p.name.toLowerCase().includes(search) ||
+            p.prenom.toLowerCase().includes(search));
+      }
       if (sexe && typeof sexe === "string" && sexe.trim()) {
-        conditions.push(eq(patients.sexe, sexe.trim()));
+        match = match && p.sexe === sexe.trim();
       }
       if (ipp && typeof ipp === "string" && ipp.trim()) {
-        conditions.push(ilike(patients.ipp, `%${ipp.trim()}%`));
+        match =
+          match &&
+          (p.ipp
+            ? p.ipp.toLowerCase().includes(ipp.toLowerCase().trim())
+            : false);
       }
-    }
+      return match;
+    });
 
-    if (conditions.length === 0) {
-      // If no filters, return all (or maybe limit?)
-      // For now, let's return all as per original behavior if q was empty
-      const allPatients = await db.select().from(patients);
-      res.json(allPatients);
-      return;
-    }
-
-    const filtered = await db
-      .select()
-      .from(patients)
-      .where(and(...conditions));
-
-    res.json(filtered);
+    res.json(filteredPatients);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error searching patients" });
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la recherche.",
+    });
   }
 };
 

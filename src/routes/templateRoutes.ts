@@ -9,19 +9,62 @@ import {
   getActiveTemplateByType,
   deleteTemplateVersion,
 } from "../controllers/templateController";
+import { authenticateToken } from "../middleware/authMiddleware";
+import { auditMiddleware } from "../middleware/auditMiddleware";
 
 const router = Router();
 
-router.get("/types", getConsultationTypes);
-router.post("/types", createConsultationType);
-router.put("/types/:id", updateConsultationType);
+router.use(authenticateToken);
 
-router.get("/types/:typeId/templates", getTemplatesByType);
-router.post("/types/:typeId/templates", createTemplateVersion);
+router.get(
+  "/types",
+  auditMiddleware("READ_CONSULTATION_TYPES"),
+  getConsultationTypes
+);
+router.post(
+  "/types",
+  auditMiddleware("CREATE_CONSULTATION_TYPE"),
+  createConsultationType
+);
+router.put(
+  "/types/:id",
+  auditMiddleware("UPDATE_CONSULTATION_TYPE"),
+  updateConsultationType
+);
 
-router.put("/:templateId/active", setActiveTemplate);
-router.delete("/:templateId", deleteTemplateVersion);
+router.get(
+  "/types/:typeId/templates",
+  auditMiddleware("READ_TEMPLATES"),
+  getTemplatesByType
+);
+router.post(
+  "/types/:typeId/templates",
+  auditMiddleware("CREATE_TEMPLATE"),
+  createTemplateVersion
+);
 
-router.get("/active/:slug", getActiveTemplateByType);
+router.put(
+  "/:templateId/active",
+  auditMiddleware("ACTIVATE_TEMPLATE"),
+  setActiveTemplate
+);
+router.delete(
+  "/:templateId",
+  auditMiddleware("DELETE_TEMPLATE"),
+  deleteTemplateVersion
+);
+
+router.get(
+  "/active/:slug",
+  auditMiddleware("READ_ACTIVE_TEMPLATE"),
+  getActiveTemplateByType
+);
+
+// Route compatible with frontend call /types/:slug/active
+router.get(
+  "/types/:slug/active",
+  auditMiddleware("READ_ACTIVE_TEMPLATE"),
+  getActiveTemplateByType
+);
 
 export default router;

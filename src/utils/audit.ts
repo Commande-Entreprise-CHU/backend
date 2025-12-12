@@ -1,0 +1,24 @@
+import { db } from "../db";
+import { auditLogs } from "../db/schema";
+
+export const logAudit = async (
+  userId: string | null,
+  action: string,
+  resource: string,
+  details: any = null,
+  status: "SUCCESS" | "FAILURE" = "SUCCESS"
+) => {
+  try {
+    await db.insert(auditLogs).values({
+      userId,
+      action,
+      resource,
+      details,
+      status,
+    });
+  } catch (error) {
+    console.error("Failed to write audit log:", error);
+    // We do not throw here to avoid breaking the main application flow,
+    // but in a high-security context, this might be a critical failure.
+  }
+};

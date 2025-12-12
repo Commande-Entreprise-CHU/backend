@@ -6,8 +6,14 @@ const IV_LENGTH = 16;
 const getKey = () => {
   const key = process.env.ENCRYPTION_KEY;
   if (!key) {
-    // Fallback for development if not set, but warn
-    console.warn("ENCRYPTION_KEY not set, using default insecure key");
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "FATAL: ENCRYPTION_KEY is not set in production environment."
+      );
+    }
+    console.warn(
+      "WARNING: ENCRYPTION_KEY not set, using default insecure key. DO NOT USE IN PRODUCTION."
+    );
     return crypto.createHash("sha256").update("default-insecure-key").digest();
   }
   return crypto.createHash("sha256").update(key).digest();

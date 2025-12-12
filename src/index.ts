@@ -5,6 +5,8 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import patientRoutes from "./routes/patientRoutes";
 import templateRoutes from "./routes/templateRoutes";
+import authRoutes from "./routes/authRoutes";
+import auditRoutes from "./routes/auditRoutes";
 
 dotenv.config();
 
@@ -102,6 +104,8 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use("/api/auth", authRoutes);
+app.use("/api/audit", auditRoutes);
 app.use("/api", patientRoutes);
 app.use("/api/templates", templateRoutes);
 
