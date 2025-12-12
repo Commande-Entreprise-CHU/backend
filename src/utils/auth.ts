@@ -18,6 +18,7 @@ export const generateToken = (user: {
   role: string;
   nom: string;
   prenom: string;
+  chuId?: string | null;
 }) => {
   return jwt.sign(
     {
@@ -26,6 +27,7 @@ export const generateToken = (user: {
       role: user.role,
       nom: user.nom,
       prenom: user.prenom,
+      chuId: user.chuId,
     },
     JWT_SECRET,
     {

@@ -41,6 +41,7 @@ export const login = async (req: Request, res: Response) => {
       role: user.role || "user",
       nom: user.nom,
       prenom: user.prenom,
+      chuId: user.chuId,
     });
 
     res.json({
@@ -52,6 +53,7 @@ export const login = async (req: Request, res: Response) => {
         role: user.role,
         nom: user.nom,
         prenom: user.prenom,
+        chuId: user.chuId,
       },
     });
   } catch (error) {
@@ -61,9 +63,9 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const register = async (req: Request, res: Response) => {
-  const { email, password, nom, prenom } = req.body;
+  const { email, password, nom, prenom, chuId } = req.body;
 
-  if (!email || !password || !nom || !prenom) {
+  if (!email || !password || !nom || !prenom || !chuId) {
     return res
       .status(400)
       .json({ success: false, message: "Tous les champs sont requis" });
@@ -87,6 +89,7 @@ export const register = async (req: Request, res: Response) => {
       password: hashedPassword,
       nom,
       prenom,
+      chuId,
       isActive: false, // Default to false, requires admin approval
       role: "user",
     });

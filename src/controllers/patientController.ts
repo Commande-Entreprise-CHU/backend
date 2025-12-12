@@ -20,9 +20,16 @@ export const createPatient = async (req: Request, res: Response) => {
     }
 
     const patientData = validationResult.data;
+    const user = (req as any).user;
+    const chuId = user.chuId;
 
     // HDS: Fetch all and filter in memory because fields are encrypted with random IV
-    const allPatients = await db.query.patients.findMany();
+    // If admin has no CHU, they see all (Super Admin behavior)
+    const whereClause = (user.role === 'admin' && !chuId) ? undefined : eq(patients.chuId, chuId);
+
+    const allPatients = await db.query.patients.findMany({
+      where: whereClause,
+    });
 
     const existing = allPatients.find(
       (p) =>
@@ -48,6 +55,10 @@ export const createPatient = async (req: Request, res: Response) => {
         ipp: patientData.ipp || null,
         dob: patientData.dob,
         sexe: patientData.sexe,
+        chuId: chuId || null, // If super admin creates patient, it might be null or should be required? 
+        // Ideally super admin shouldn't create patients without CHU, but for now let's allow it or it will fail if I enforce it.
+        // But wait, if I am super admin and I create a patient, it will have null CHU.
+        // And then only super admin can see it. That seems fine.
       })
       .returning();
 
@@ -68,9 +79,15 @@ export const createPatient = async (req: Request, res: Response) => {
 export const searchPatients = async (req: Request, res: Response) => {
   try {
     const { name, sexe, ipp, q } = req.query;
+    const user = (req as any).user;
+    const chuId = user.chuId;
 
     // HDS: Fetch all and filter in memory because fields are encrypted
-    const allPatients = await db.query.patients.findMany();
+    const whereClause = (user.role === 'admin' && !chuId) ? undefined : eq(patients.chuId, chuId);
+    
+    const allPatients = await db.query.patients.findMany({
+      where: whereClause,
+    });
 
     const filteredPatients = allPatients.filter((p) => {
       if (q && typeof q === "string" && q.trim()) {
@@ -117,11 +134,19 @@ export const searchPatients = async (req: Request, res: Response) => {
 export const getPatientById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const user = (req as any).user;
+    const chuId = user.chuId;
     const patient = await getPatientData(id);
 
     if (!patient) {
       res.status(404).json({ message: "Not found" });
       return;
+    }
+
+    if (user.role !== 'admin' || chuId) {
+        if (patient.chuId !== chuId) {
+            return res.status(403).json({ message: "Access denied" });
+        }
     }
 
     res.json(patient);
@@ -162,6 +187,22 @@ export const updatePatientSection = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { values, consultationTypeId } = req.body;
+    const user = (req as any).user;
+    const chuId = user.chuId;
+
+    const patient = await db.query.patients.findFirst({
+      where: eq(patients.id, id),
+    });
+
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+
+    if (user.role !== 'admin' || chuId) {
+        if (patient.chuId !== chuId) {
+            return res.status(403).json({ message: "Access denied" });
+        }
+    }
 
     // Validation générique pour accepter tout objet JSON
     if (!values || typeof values !== "object") {

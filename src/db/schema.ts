@@ -47,6 +47,14 @@ export const patients = pgTable("patients", {
   sexe: varchar("sexe", { length: 20 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  chuId: uuid("chu_id").references(() => chus.id),
+});
+
+export const chus = pgTable("chus", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  city: varchar("city", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const users = pgTable("users", {
@@ -57,6 +65,7 @@ export const users = pgTable("users", {
   prenom: varchar("prenom", { length: 100 }).notNull(),
   role: varchar("role", { length: 20 }).default("user"),
   isActive: boolean("is_active").default(false),
+  chuId: uuid("chu_id").references(() => chus.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -97,6 +106,25 @@ export const consultationTemplatesRelations = relations(
     }),
   })
 );
+
+export const chusRelations = relations(chus, ({ many }) => ({
+  users: many(users),
+  patients: many(patients),
+}));
+
+export const usersRelations = relations(users, ({ one }) => ({
+  chu: one(chus, {
+    fields: [users.chuId],
+    references: [chus.id],
+  }),
+}));
+
+export const patientsRelations = relations(patients, ({ one }) => ({
+  chu: one(chus, {
+    fields: [patients.chuId],
+    references: [chus.id],
+  }),
+}));
 
 // HDS: Audit Logs for traceability
 export const auditLogs = pgTable("audit_logs", {

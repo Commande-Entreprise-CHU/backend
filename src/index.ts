@@ -7,6 +7,8 @@ import patientRoutes from "./routes/patientRoutes";
 import templateRoutes from "./routes/templateRoutes";
 import authRoutes from "./routes/authRoutes";
 import auditRoutes from "./routes/auditRoutes";
+import chuRoutes from "./routes/chuRoutes";
+import adminRoutes from "./routes/adminRoutes";
 
 dotenv.config();
 
@@ -105,7 +107,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/audit", auditRoutes);
+app.use("/api/chus", chuRoutes);
 app.use("/api", patientRoutes);
 app.use("/api/templates", templateRoutes);
 
