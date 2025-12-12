@@ -3,6 +3,7 @@ import { db } from "../db";
 import { users } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { hashPassword, comparePassword, generateToken } from "../utils/auth";
+import { AUTH_COOKIE_NAME } from "../config/auth";
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -42,9 +43,17 @@ export const login = async (req: Request, res: Response) => {
       chuId: user.chuId,
     });
 
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie(AUTH_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
     res.json({
       success: true,
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -58,6 +67,17 @@ export const login = async (req: Request, res: Response) => {
     console.error(error);
     res.status(500).json({ success: false, message: "Erreur serveur" });
   }
+};
+
+export const logout = async (req: Request, res: Response) => {
+  const isProduction = process.env.NODE_ENV === "production";
+  res.clearCookie(AUTH_COOKIE_NAME, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: "lax",
+    path: "/",
+  });
+  res.json({ success: true });
 };
 
 export const register = async (req: Request, res: Response) => {

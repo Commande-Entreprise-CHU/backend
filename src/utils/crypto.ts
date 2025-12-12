@@ -3,6 +3,8 @@ import crypto from "crypto";
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
 
+let devEphemeralKey: Buffer | null = null;
+
 const getKey = () => {
   const key = process.env.ENCRYPTION_KEY;
   if (!key) {
@@ -11,10 +13,13 @@ const getKey = () => {
         "FATAL: ENCRYPTION_KEY is not set in production environment."
       );
     }
-    console.warn(
-      "WARNING: ENCRYPTION_KEY not set, using default insecure key. DO NOT USE IN PRODUCTION."
-    );
-    return crypto.createHash("sha256").update("default-insecure-key").digest();
+    if (!devEphemeralKey) {
+      devEphemeralKey = crypto.randomBytes(32);
+      console.warn(
+        "WARNING: ENCRYPTION_KEY not set; using an ephemeral dev key (data will be unreadable after restart)."
+      );
+    }
+    return devEphemeralKey;
   }
   return crypto.createHash("sha256").update(key).digest();
 };

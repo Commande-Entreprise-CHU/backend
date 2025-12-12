@@ -1,7 +1,13 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-prod";
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET must be configured");
+  }
+  return secret;
+};
 
 export const hashPassword = async (password: string) => {
   const salt = await bcrypt.genSalt(10);
@@ -29,7 +35,7 @@ export const generateToken = (user: {
       prenom: user.prenom,
       chuId: user.chuId,
     },
-    JWT_SECRET,
+    getJwtSecret(),
     {
       expiresIn: "24h",
     }
@@ -37,5 +43,5 @@ export const generateToken = (user: {
 };
 
 export const verifyToken = (token: string) => {
-  return jwt.verify(token, JWT_SECRET);
+  return jwt.verify(token, getJwtSecret());
 };

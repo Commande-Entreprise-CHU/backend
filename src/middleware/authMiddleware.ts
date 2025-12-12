@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../utils/auth";
+import { AUTH_COOKIE_NAME } from "../config/auth";
 
 export interface AuthRequest extends Request {
   user?: any;
@@ -11,7 +12,9 @@ export const authenticateToken = (
   next: NextFunction
 ) => {
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+  const headerToken = authHeader && authHeader.split(" ")[1];
+  const cookieToken = (req as any).cookies?.[AUTH_COOKIE_NAME];
+  const token = headerToken || cookieToken;
 
   if (!token) {
     return res.status(401).json({ message: "Access token required" });
@@ -22,6 +25,9 @@ export const authenticateToken = (
     req.user = user;
     next();
   } catch (error) {
+    if (cookieToken) {
+      res.clearCookie(AUTH_COOKIE_NAME);
+    }
     return res.status(403).json({ message: "Invalid or expired token" });
   }
 };

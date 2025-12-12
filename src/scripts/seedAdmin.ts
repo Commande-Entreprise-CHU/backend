@@ -4,7 +4,20 @@ import { hashPassword } from "../utils/auth";
 import { eq } from "drizzle-orm";
 
 const seedAdmin = async () => {
-  const adminEmail = "admin@admin.admin";
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const adminNom = process.env.ADMIN_NOM || "Admin";
+  const adminPrenom = process.env.ADMIN_PRENOM || "System";
+
+  if (!adminEmail) {
+    console.error("ADMIN_EMAIL must be set to seed an admin user.");
+    process.exit(1);
+  }
+
+  if (!adminPassword) {
+    console.error("ADMIN_PASSWORD must be set to seed an admin user.");
+    process.exit(1);
+  }
 
   try {
     const existingAdmin = await db.query.users.findFirst({
@@ -16,13 +29,13 @@ const seedAdmin = async () => {
       process.exit(0);
     }
 
-    const hashedPassword = await hashPassword("admin");
+    const hashedPassword = await hashPassword(adminPassword);
 
     await db.insert(users).values({
       email: adminEmail,
       password: hashedPassword,
-      nom: "Admin",
-      prenom: "System",
+      nom: adminNom,
+      prenom: adminPrenom,
       role: "admin",
       isActive: true,
     });
