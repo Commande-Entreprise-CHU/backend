@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { db } from "../db";
 import { users } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
+
+const uuidSchema = z.string().uuid("ID utilisateur invalide");
 
 export const getUsers = async (req: Request, res: Response) => {
   try {
@@ -28,6 +31,12 @@ export const updateUserStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { isActive } = req.body;
+
+    // HDS: Validate UUID format
+    const idValidation = uuidSchema.safeParse(id);
+    if (!idValidation.success) {
+      return res.status(400).json({ message: "ID utilisateur invalide" });
+    }
 
     if (typeof isActive !== "boolean") {
       return res.status(400).json({ message: "isActive doit être un booléen" });
@@ -58,6 +67,12 @@ export const updateUserChu = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { chuId } = req.body;
+
+    // HDS: Validate UUID format
+    const idValidation = uuidSchema.safeParse(id);
+    if (!idValidation.success) {
+      return res.status(400).json({ message: "ID utilisateur invalide" });
+    }
 
     const [updatedUser] = await db
       .update(users)

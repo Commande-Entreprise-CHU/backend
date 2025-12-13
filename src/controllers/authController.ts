@@ -4,6 +4,7 @@ import { users } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { hashPassword, comparePassword, generateToken } from "../utils/auth";
 import { AUTH_COOKIE_NAME } from "../config/auth";
+import { registerSchema } from "../validation/authSchema";
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -81,13 +82,19 @@ export const logout = async (req: Request, res: Response) => {
 };
 
 export const register = async (req: Request, res: Response) => {
-  const { email, password, nom, prenom, chuId } = req.body;
-
-  if (!email || !password || !nom || !prenom || !chuId) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Tous les champs sont requis" });
+  // HDS: Validate input with password policy
+  const validationResult = registerSchema.safeParse(req.body);
+  if (!validationResult.success) {
+    const errors = validationResult.error.flatten().fieldErrors;
+    const firstError = Object.values(errors).flat()[0] || "Données invalides";
+    return res.status(400).json({ 
+      success: false, 
+      message: firstError,
+      errors,
+    });
   }
+
+  const { email, password, nom, prenom, chuId } = validationResult.data;
 
   try {
     const existing = await db.query.users.findFirst({
