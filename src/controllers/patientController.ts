@@ -288,3 +288,81 @@ export const deletePatient = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const updatePatientCore = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, prenom, ipp, dob, sexe } = req.body;
+    const user = (req as any).user;
+    const chuId = user.chuId;
+
+    const patient = await db.query.patients.findFirst({
+      where: eq(patients.id, id),
+    });
+
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+
+    if (user.role !== "admin" || chuId) {
+      if (patient.chuId !== chuId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    // Basic validation
+    if (!name || !prenom || !dob || !sexe) {
+      return res.status(400).json({
+        success: false,
+        message: "Champs obligatoires manquants.",
+      });
+    }
+
+    // Check for duplicates (excluding current patient)
+    // HDS: Fetch all and filter in memory because fields are encrypted
+     const whereClause =
+      user.role === "admin" && !chuId
+        ? eq(patients.deleted, false)
+        : and(eq(patients.chuId, chuId), eq(patients.deleted, false));
+
+    const allPatients = await db.query.patients.findMany({
+      where: whereClause,
+    });
+
+    const duplicate = allPatients.find(
+      (p) =>
+        p.id !== id &&
+        p.name.toLowerCase() === name.toLowerCase() &&
+        p.prenom.toLowerCase() === prenom.toLowerCase() &&
+        p.dob === dob
+    );
+
+    if (duplicate) {
+      return res.json({
+        success: false,
+        message: "Un autre patient existe déjà avec ces informations.",
+      });
+    }
+
+    const updatedPatient = await db
+      .update(patients)
+      .set({
+        name,
+        prenom,
+        ipp: ipp || null,
+        dob,
+        sexe,
+        updatedAt: new Date(),
+      })
+      .where(eq(patients.id, id))
+      .returning();
+
+    res.json({ success: true, patient: updatedPatient[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la mise à jour.",
+    });
+  }
+};
