@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../db";
 import { patients, patientConsultations, users } from "../db/schema";
-import { eq, count, and } from "drizzle-orm";
+import { eq, count, and, desc, sql } from "drizzle-orm";
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
@@ -75,3 +75,66 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getMyRecentPatients = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const userId = user.id;
+
+    // 1. Patients created by me (recently)
+    // We only have createdBy on patients table
+    const createdPatients = await db
+      .select({
+        id: patients.id,
+        name: patients.name,
+        prenom: patients.prenom,
+        ipp: patients.ipp,
+        dob: patients.dob,
+        sexe: patients.sexe,
+        date: patients.createdAt,
+        action: sql<string>`'created'`, // Custom field to indicate action
+      })
+      .from(patients)
+      .where(and(eq(patients.createdBy, userId), eq(patients.deleted, false)))
+      .orderBy(desc(patients.createdAt))
+      .limit(10);
+
+    // 2. Patients I did a consultation for (recently)
+    // Join patientConsultations on patients
+    const consultedPatients = await db
+      .select({
+        id: patients.id,
+        name: patients.name,
+        prenom: patients.prenom,
+        ipp: patients.ipp,
+        dob: patients.dob,
+        sexe: patients.sexe,
+        date: patientConsultations.updatedAt,
+        action: sql<string>`'consulted'`,
+      })
+      .from(patientConsultations)
+      .innerJoin(patients, eq(patientConsultations.patientId, patients.id))
+      .where(and(eq(patientConsultations.updatedBy, userId), eq(patients.deleted, false)))
+      .orderBy(desc(patientConsultations.updatedAt))
+      .limit(10);
+
+    // Combine and sort
+    const allRecent = [...createdPatients, ...consultedPatients]
+      .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime())
+      .slice(0, 10);
+
+    // Remove duplicates (if I created AND consulted, prefer the most recent action)
+    const uniqueRecent = allRecent.filter(
+      (p, index, self) => index === self.findIndex((t) => t.id === p.id)
+    );
+
+    res.json({ success: true, patients: uniqueRecent });
+  } catch (error) {
+    console.error("Error fetching recent patients:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la récupération des patients récents",
+    });
+  }
+};
+

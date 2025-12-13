@@ -48,6 +48,7 @@ export const patients = pgTable("patients", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   chuId: uuid("chu_id").references(() => chus.id),
+  createdBy: uuid("created_by").references(() => users.id),
   deleted: boolean("deleted").default(false),
 });
 
@@ -149,6 +150,7 @@ export const patientConsultations = pgTable(
       .references(() => consultationTypes.id)
       .notNull(),
     data: encryptedJson("data"),
+    updatedBy: uuid("updated_by").references(() => users.id),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

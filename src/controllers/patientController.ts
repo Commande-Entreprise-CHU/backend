@@ -56,10 +56,8 @@ export const createPatient = async (req: Request, res: Response) => {
         ipp: patientData.ipp || null,
         dob: patientData.dob,
         sexe: patientData.sexe,
-        chuId: chuId || null, // If super admin creates patient, it might be null or should be required?
-        // Ideally super admin shouldn't create patients without CHU, but for now let's allow it or it will fail if I enforce it.
-        // But wait, if I am super admin and I create a patient, it will have null CHU.
-        // And then only super admin can see it. That seems fine.
+        chuId: chuId || null,
+        createdBy: user.id,
       })
       .returning();
 
@@ -230,6 +228,7 @@ export const updatePatientSection = async (req: Request, res: Response) => {
         patientId: id,
         consultationTypeId,
         data: values,
+        updatedBy: (req as any).user?.id, // Track who updated
       })
       .onConflictDoUpdate({
         target: [
@@ -239,6 +238,7 @@ export const updatePatientSection = async (req: Request, res: Response) => {
         set: {
           data: values,
           updatedAt: new Date(),
+          updatedBy: (req as any).user?.id, // Track who updated
         },
       });
 
