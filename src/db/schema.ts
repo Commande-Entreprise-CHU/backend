@@ -48,6 +48,7 @@ export const patients = pgTable("patients", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   chuId: uuid("chu_id").references(() => chus.id),
+  deleted: boolean("deleted").default(false),
 });
 
 export const chus = pgTable("chus", {

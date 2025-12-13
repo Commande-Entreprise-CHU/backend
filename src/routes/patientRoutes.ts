@@ -4,6 +4,7 @@ import {
   searchPatients,
   getPatientById,
   updatePatientSection,
+  deletePatient,
 } from "../controllers/patientController";
 import { authenticateToken } from "../middleware/authMiddleware";
 import { auditMiddleware } from "../middleware/auditMiddleware";
@@ -20,5 +21,6 @@ router.put(
   auditMiddleware("UPDATE_PATIENT"),
   updatePatientSection
 );
+router.delete("/patient/:id", auditMiddleware("DELETE_PATIENT"), deletePatient);
 
 export default router;

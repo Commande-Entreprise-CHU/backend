@@ -84,8 +84,11 @@ export const searchPatients = async (req: Request, res: Response) => {
     const chuId = user.chuId;
 
     // HDS: Fetch all and filter in memory because fields are encrypted
+    // HDS: Fetch all and filter in memory because fields are encrypted
     const whereClause =
-      user.role === "admin" && !chuId ? undefined : eq(patients.chuId, chuId);
+      user.role === "admin" && !chuId
+        ? eq(patients.deleted, false)
+        : and(eq(patients.chuId, chuId), eq(patients.deleted, false));
 
     const allPatients = await db.query.patients.findMany({
       where: whereClause,
@@ -160,7 +163,7 @@ export const getPatientById = async (req: Request, res: Response) => {
 
 const getPatientData = async (id: string) => {
   const patient = await db.query.patients.findFirst({
-    where: eq(patients.id, id),
+    where: and(eq(patients.id, id), eq(patients.deleted, false)),
   });
 
   if (!patient) return null;
@@ -247,6 +250,41 @@ export const updatePatientSection = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Erreur interne",
+    });
+  }
+};
+
+export const deletePatient = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = (req as any).user;
+    const chuId = user.chuId;
+
+    const patient = await db.query.patients.findFirst({
+      where: eq(patients.id, id),
+    });
+
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+
+    if (user.role !== "admin" || chuId) {
+      if (patient.chuId !== chuId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    await db
+      .update(patients)
+      .set({ deleted: true, updatedAt: new Date() })
+      .where(eq(patients.id, id));
+
+    res.json({ success: true, message: "Patient archivé avec succès." });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la suppression.",
     });
   }
 };
