@@ -8,7 +8,7 @@ let devEphemeralKey: Buffer | null = null;
 const getKey = () => {
   const key = process.env.ENCRYPTION_KEY;
   if (!key) {
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.APP_ENV === "production") {
       throw new Error(
         "FATAL: ENCRYPTION_KEY is not set in production environment."
       );

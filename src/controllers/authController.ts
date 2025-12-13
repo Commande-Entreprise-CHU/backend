@@ -44,7 +44,7 @@ export const login = async (req: Request, res: Response) => {
       chuId: user.chuId,
     });
 
-    const isProduction = process.env.NODE_ENV === "production";
+    const isProduction = process.env.APP_ENV === "production";
     res.cookie(AUTH_COOKIE_NAME, token, {
       httpOnly: true,
       secure: isProduction,
@@ -71,7 +71,7 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const logout = async (req: Request, res: Response) => {
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction = process.env.APP_ENV === "production";
   res.clearCookie(AUTH_COOKIE_NAME, {
     httpOnly: true,
     secure: isProduction,
