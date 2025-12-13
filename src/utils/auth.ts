@@ -1,6 +1,19 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
+// User roles in the system
+export type UserRole = "master_admin" | "chu_admin" | "doctor";
+
+// JWT payload type
+export interface UserPayload {
+  id: string;
+  email: string;
+  role: UserRole;
+  nom: string;
+  prenom: string;
+  chuId?: string | null;
+}
+
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -42,6 +55,7 @@ export const generateToken = (user: {
   );
 };
 
-export const verifyToken = (token: string) => {
-  return jwt.verify(token, getJwtSecret());
+export const verifyToken = (token: string): UserPayload => {
+  return jwt.verify(token, getJwtSecret()) as UserPayload;
 };
+

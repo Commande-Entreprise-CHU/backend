@@ -116,7 +116,7 @@ export const register = async (req: Request, res: Response) => {
       prenom,
       chuId,
       isActive: false, // Default to false, requires admin approval
-      role: "user",
+      role: "doctor",
     });
 
     res.json({
