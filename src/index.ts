@@ -10,6 +10,7 @@ import authRoutes from "./routes/authRoutes";
 import auditRoutes from "./routes/auditRoutes";
 import chuRoutes from "./routes/chuRoutes";
 import adminRoutes from "./routes/adminRoutes";
+import statsRoutes from "./routes/statsRoutes";
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use("/api/audit", auditRoutes);
 app.use("/api/chus", chuRoutes);
 app.use("/api", patientRoutes);
 app.use("/api/templates", templateRoutes);
+app.use("/api/stats", statsRoutes);
 
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
