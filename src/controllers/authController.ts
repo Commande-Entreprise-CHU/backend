@@ -167,5 +167,32 @@ export const approveUser = async (req: Request, res: Response) => {
 };
 
 export const getMe = async (req: any, res: Response) => {
-  res.json({ success: true, user: req.user });
+  try {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, req.user.id),
+      with: {
+        chu: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Utilisateur introuvable" });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        nom: user.nom,
+        prenom: user.prenom,
+        chuId: user.chuId,
+        chu: user.chu?.name || "",
+      },
+    });
+  } catch (error) {
+    console.error("Error in getMe:", error);
+    res.status(500).json({ success: false, message: "Erreur serveur" });
+  }
 };
