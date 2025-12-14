@@ -120,6 +120,13 @@
       "when": 1765665600000,
       "tag": "0016_migrate_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1765723244771,
+      "tag": "0017_bouncy_the_initiative",
+      "breakpoints": true
     }
   ]
 }
