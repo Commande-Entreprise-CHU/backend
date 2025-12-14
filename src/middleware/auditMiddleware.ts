@@ -29,12 +29,38 @@ export const auditMiddleware = (action: string) => {
         }
       }
 
-      // Sanitize body to remove sensitive data
-      const sanitizeBody = (data: any) => {
+      // Sanitize data recursively to remove sensitive PII/PHI
+      const sanitizeData = (data: any): any => {
         if (!data) return null;
         if (typeof data !== "object") return data;
+
+        if (Array.isArray(data)) {
+          return data.map(sanitizeData);
+        }
+
+        // List of keys that MUST NOT appear in cleartext logs (HDS)
+        const SENSITIVE_KEYS = [
+          "password",
+          "token",
+          "access_token",
+          "name",
+          "prenom",
+          "ipp",
+          "dob",
+          "sexe",
+          "ssn",
+          "email"
+        ];
+
         const sanitized = { ...data };
-        if ("password" in sanitized) sanitized.password = "***";
+        
+        for (const key of Object.keys(sanitized)) {
+          if (SENSITIVE_KEYS.includes(key.toLowerCase())) {
+            sanitized[key] = "***";
+          } else if (typeof sanitized[key] === "object" && sanitized[key] !== null) {
+            sanitized[key] = sanitizeData(sanitized[key]);
+          }
+        }
         return sanitized;
       };
 
@@ -47,9 +73,9 @@ export const auditMiddleware = (action: string) => {
           method: req.method,
           ip: req.ip,
           statusCode: res.statusCode,
-          query: req.query,
-          params: req.params,
-          body: sanitizeBody(req.body),
+          query: sanitizeData(req.query),
+          params: sanitizeData(req.params),
+          body: sanitizeData(req.body),
         },
         status
       ).catch((err) => console.error("Audit Log Error:", err));

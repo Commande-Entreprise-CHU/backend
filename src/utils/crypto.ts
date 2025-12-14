@@ -66,13 +66,19 @@ export const decrypt = (encryptedText: string): any => {
   const tag = Buffer.from(tagHex, "hex");
   const key = getKey();
 
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(tag);
+  try {
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(tag);
 
-  let decrypted = decipher.update(encryptedHex, "hex", "utf8");
-  decrypted += decipher.final("utf8");
+    let decrypted = decipher.update(encryptedHex, "hex", "utf8");
+    decrypted += decipher.final("utf8");
 
-  return JSON.parse(decrypted);
+    return JSON.parse(decrypted);
+  } catch (error) {
+    console.error("Decryption failed:", error);
+    // Return a safe fallback rather than crashing the request
+    return "[Donnée Chiffrée]";
+  }
 };
 
 export const hashForSearch = (text: string): string => {

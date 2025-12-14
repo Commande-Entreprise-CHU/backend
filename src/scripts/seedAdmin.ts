@@ -36,7 +36,7 @@ const seedAdmin = async () => {
       password: hashedPassword,
       nom: adminNom,
       prenom: adminPrenom,
-      role: "admin",
+      role: "master_admin",
       isActive: true,
     });
 

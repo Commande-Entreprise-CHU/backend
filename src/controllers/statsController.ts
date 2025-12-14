@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../db";
 import { patients, patientConsultations, users } from "../db/schema";
 import { eq, count, and, desc, sql } from "drizzle-orm";
+import { isSuperAdmin } from "../utils/auth";
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
@@ -12,7 +13,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     let consultationCount = 0;
     let userCount = 0;
 
-    if (user.role === "admin" && !chuId) {
+    if (isSuperAdmin(user)) {
        // Super Admin: Count everything
       const p = await db.select({ count: count() }).from(patients).where(eq(patients.deleted, false));
       patientCount = p[0].count;
