@@ -5,7 +5,7 @@ import {
   patients,
   patientConsultations,
 } from "../db/schema";
-import { eq, and, or, desc } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { patientSchema } from "../validation/patientSchema";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { isSuperAdmin } from "../utils/auth";
