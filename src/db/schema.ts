@@ -49,6 +49,10 @@ export const patients = pgTable("patients", {
   chuId: uuid("chu_id").references(() => chus.id),
   createdBy: uuid("created_by").references(() => users.id),
   deleted: boolean("deleted").default(false),
+  // Blind Indexing Columns
+  nameDigest: varchar("name_digest", { length: 64 }), // SHA256 hex is 64 chars
+  prenomDigest: varchar("prenom_digest", { length: 64 }),
+  ippDigest: varchar("ipp_digest", { length: 64 }),
 });
 
 export const chus = pgTable("chus", {

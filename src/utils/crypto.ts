@@ -74,3 +74,14 @@ export const decrypt = (encryptedText: string): any => {
 
   return JSON.parse(decrypted);
 };
+
+export const hashForSearch = (text: string): string => {
+  if (!text) return "";
+  const str = String(text);
+  const normalized = str.trim().toLowerCase();
+  const key = getKey();
+  const hmac = crypto.createHmac("sha256", key);
+  hmac.update(normalized);
+  return hmac.digest("hex");
+};
+

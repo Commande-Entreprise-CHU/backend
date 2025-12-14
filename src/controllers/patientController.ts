@@ -1,10 +1,11 @@
 import { Response } from "express";
 import { db } from "../db";
+import { hashForSearch } from "../utils/crypto";
 import {
   patients,
   patientConsultations,
 } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, desc } from "drizzle-orm";
 import { patientSchema } from "../validation/patientSchema";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { isSuperAdmin } from "../utils/auth";
@@ -58,6 +59,9 @@ export const createPatient = async (req: AuthRequest, res: Response) => {
         sexe: patientData.sexe,
         chuId: chuId ?? null,
         createdBy: user!.id,
+        nameDigest: hashForSearch(patientData.name),
+        prenomDigest: hashForSearch(patientData.prenom),
+        ippDigest: patientData.ipp ? hashForSearch(patientData.ipp) : null,
       })
       .returning();
 
@@ -81,47 +85,76 @@ export const searchPatients = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const chuId = user?.chuId;
 
-    const whereClause = isSuperAdmin(user)
-      ? eq(patients.deleted, false)
-      : and(eq(patients.chuId, chuId as string), eq(patients.deleted, false));
+    const conditions = [
+      isSuperAdmin(user) ? undefined : eq(patients.chuId, chuId as string),
+      eq(patients.deleted, false),
+    ];
 
-    const allPatients = await db.query.patients.findMany({
-      where: whereClause,
-    });
-
-    const filteredPatients = allPatients.filter((p) => {
-      if (q && typeof q === "string" && q.trim()) {
-        const search = q.toLowerCase().trim();
-        return (
-          p.name.toLowerCase().includes(search) ||
-          p.prenom.toLowerCase().includes(search) ||
-          (p.ipp && p.ipp.toLowerCase().includes(search)) ||
-          p.sexe.toLowerCase().includes(search)
+    // Global search ("q") -> exact match on name, prenom, or ipp
+    if (q && typeof q === "string" && q.trim()) {
+      const searchHash = hashForSearch(q);
+      conditions.push(
+        or(
+          eq(patients.nameDigest, searchHash),
+          eq(patients.prenomDigest, searchHash),
+          eq(patients.ippDigest, searchHash)
+        )
+      );
+    } else {
+      // Specific fields search
+      if (name && typeof name === "string" && name.trim()) {
+        const nameHash = hashForSearch(name);
+        conditions.push(
+          or(
+            eq(patients.nameDigest, nameHash),
+            eq(patients.prenomDigest, nameHash)
+          )
         );
       }
-
-      let match = true;
-      if (name && typeof name === "string" && name.trim()) {
-        const search = name.toLowerCase().trim();
-        match =
-          match &&
-          (p.name.toLowerCase().includes(search) ||
-            p.prenom.toLowerCase().includes(search));
-      }
-      if (sexe && typeof sexe === "string" && sexe.trim()) {
-        match = match && p.sexe === sexe.trim();
-      }
       if (ipp && typeof ipp === "string" && ipp.trim()) {
-        match =
-          match &&
-          (p.ipp
-            ? p.ipp.toLowerCase().includes(ipp.toLowerCase().trim())
-            : false);
+        conditions.push(eq(patients.ippDigest, hashForSearch(ipp)));
       }
-      return match;
-    });
+    }
 
-    res.json(filteredPatients);
+    // Sexe filter (safe to do in DB as it is not encrypted)
+    if (sexe && typeof sexe === "string" && sexe.trim()) {
+      conditions.push(eq(patients.sexe, sexe.trim()));
+    }
+
+    const whereClause = and(
+      ...conditions.filter((c) => c !== undefined)
+    );
+
+    const foundPatients = await db.query.patients.findMany({
+      where: whereClause,
+      limit: 50, // Limit results for performance
+      orderBy: (patients, { desc }) => [desc(patients.updatedAt)],
+    });
+    
+    // Client-side filtering for 'prenom' is NOT needed if we don't have a prenom field in the search form, 
+    // but the current frontend form ONLY has Name, IPP, Sexe. 
+    // If the user searches "Name" in the form, they might mean "Prenom" too if they are confused, 
+    // but usually "Name" maps to "Name". 
+    // Wait, the frontend form has "Name" (nom) input.
+    // If I look at the old code:
+    // (p.name.toLowerCase().includes(search) || p.prenom.toLowerCase().includes(search))
+    // So "name" input was searching BOTH Name AND Prenom.
+    // I should fix my query to match that.
+    
+    // REVISITING logic for "name" param:
+    // If param 'name' is provided, we should check BOTH nameDigest and prenomDigest to mimic old behavior roughly, or just nameDigest. 
+    // The old code: match = match && (name... || prenom...)
+    // So yes, I should check both.
+    
+    // Wait, I can't restart this replacement block mid-stream. 
+    // I will submit this version initially, but I will fix the logical mapping in a second replacement to be robust.
+    // However, looking at the block above:
+    // if (name ..) conditions.push(eq(patients.nameDigest ...))
+    // This only checks Name. 
+    
+    // I will rewrite the replacement content to be correct right now.
+   
+    res.json(foundPatients);
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -338,6 +371,9 @@ export const updatePatientCore = async (req: AuthRequest, res: Response) => {
         dob,
         sexe,
         updatedAt: new Date(),
+        nameDigest: hashForSearch(name),
+        prenomDigest: hashForSearch(prenom),
+        ippDigest: ipp ? hashForSearch(ipp) : null,
       })
       .where(eq(patients.id, id))
       .returning();
