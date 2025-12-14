@@ -32,9 +32,18 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-const allowedOrigins = process.env.CLIENT_URL
+const envOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(",").map((url) => url.trim())
-  : ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"];
+  : [];
+
+const defaultOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "https://imt-chu.vercel.app",
+];
+
+const allowedOrigins = [...new Set([...envOrigins, ...defaultOrigins])];
 
 app.use(
   cors({
