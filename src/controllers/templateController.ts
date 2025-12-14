@@ -8,6 +8,7 @@ export const getConsultationTypes = async (req: Request, res: Response) => {
     const types = await db
       .select()
       .from(consultationTypes)
+      .where(eq(consultationTypes.deleted, false))
       .orderBy(asc(consultationTypes.order));
     res.json(types);
   } catch (error) {
@@ -197,5 +198,27 @@ export const deleteTemplateVersion = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error deleting template version:", error);
     res.status(500).json({ error: "Failed to delete template version" });
+  }
+};
+
+export const deleteConsultationType = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    console.log("Attempting to delete consultation type:", id);
+
+    const [deletedType] = await db
+      .update(consultationTypes)
+      .set({ deleted: true })
+      .where(eq(consultationTypes.id, id))
+      .returning();
+
+    if (!deletedType) {
+      return res.status(404).json({ error: "Type de consultation non trouvé" });
+    }
+
+    res.json({ success: true, message: "Type de consultation supprimé avec succès" });
+  } catch (error) {
+    console.error("Error deleting consultation type:", error);
+    res.status(500).json({ error: "Échec de la suppression du type de consultation" });
   }
 };

@@ -63,6 +63,19 @@ app.use("/api", patientRoutes);
 app.use("/api/templates", templateRoutes);
 app.use("/api/stats", statsRoutes);
 
+// Global error handler - catches unhandled errors
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("Unhandled error:", err);
+  
+  // Don't expose internal error details in production
+  const isProduction = process.env.APP_ENV === "production";
+  res.status(500).json({
+    success: false,
+    message: isProduction ? "Erreur interne du serveur" : err.message,
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });
+

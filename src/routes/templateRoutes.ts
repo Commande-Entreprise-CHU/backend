@@ -8,6 +8,7 @@ import {
   setActiveTemplate,
   getActiveTemplateByType,
   deleteTemplateVersion,
+  deleteConsultationType,
 } from "../controllers/templateController";
 import { authenticateToken } from "../middleware/authMiddleware";
 import { auditMiddleware } from "../middleware/auditMiddleware";
@@ -30,6 +31,12 @@ router.put(
   "/types/:id",
   auditMiddleware("UPDATE_CONSULTATION_TYPE"),
   updateConsultationType
+);
+
+router.delete(
+  "/types/:id",
+  auditMiddleware("DELETE_CONSULTATION_TYPE"),
+  deleteConsultationType
 );
 
 router.get(

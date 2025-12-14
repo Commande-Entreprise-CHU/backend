@@ -78,6 +78,7 @@ export const consultationTypes = pgTable("consultation_types", {
   order: integer("order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deleted: boolean("deleted").default(false),
 });
 
 export const consultationTemplates = pgTable("consultation_templates", {

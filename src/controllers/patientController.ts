@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { db } from "../db";
 import {
   patients,
@@ -7,8 +7,14 @@ import {
 } from "../db/schema";
 import { eq, and, ilike, or } from "drizzle-orm";
 import { patientSchema } from "../validation/patientSchema";
+import { AuthRequest } from "../middleware/authMiddleware";
 
-export const createPatient = async (req: Request, res: Response) => {
+// Helper to check if user is a super admin (master_admin without CHU restriction)
+const isSuperAdmin = (user: AuthRequest["user"]): boolean => {
+  return user?.role === "master_admin" && !user.chuId;
+};
+
+export const createPatient = async (req: AuthRequest, res: Response) => {
   try {
     const validationResult = patientSchema.safeParse(req.body);
     if (!validationResult.success) {
@@ -20,13 +26,14 @@ export const createPatient = async (req: Request, res: Response) => {
     }
 
     const patientData = validationResult.data;
-    const user = (req as any).user;
-    const chuId = user.chuId;
+    const user = req.user;
+    const chuId = user?.chuId;
 
     // HDS: Fetch all and filter in memory because fields are encrypted with random IV
-    // If admin has no CHU, they see all (Super Admin behavior)
-    const whereClause =
-      user.role === "admin" && !chuId ? undefined : eq(patients.chuId, chuId);
+    // Super Admin (master_admin without CHU) can see all patients
+    const whereClause = isSuperAdmin(user)
+      ? undefined
+      : eq(patients.chuId, chuId as string);
 
     const allPatients = await db.query.patients.findMany({
       where: whereClause,
@@ -56,8 +63,8 @@ export const createPatient = async (req: Request, res: Response) => {
         ipp: patientData.ipp || null,
         dob: patientData.dob,
         sexe: patientData.sexe,
-        chuId: chuId || null,
-        createdBy: user.id,
+        chuId: chuId ?? null,
+        createdBy: user!.id,
       })
       .returning();
 
@@ -75,18 +82,17 @@ export const createPatient = async (req: Request, res: Response) => {
   }
 };
 
-export const searchPatients = async (req: Request, res: Response) => {
+export const searchPatients = async (req: AuthRequest, res: Response) => {
   try {
     const { name, sexe, ipp, q } = req.query;
-    const user = (req as any).user;
-    const chuId = user.chuId;
+    const user = req.user;
+    const chuId = user?.chuId;
 
     // HDS: Fetch all and filter in memory because fields are encrypted
-    // HDS: Fetch all and filter in memory because fields are encrypted
-    const whereClause =
-      user.role === "admin" && !chuId
-        ? eq(patients.deleted, false)
-        : and(eq(patients.chuId, chuId), eq(patients.deleted, false));
+    // Super Admin can see all patients, others only their CHU's patients
+    const whereClause = isSuperAdmin(user)
+      ? eq(patients.deleted, false)
+      : and(eq(patients.chuId, chuId as string), eq(patients.deleted, false));
 
     const allPatients = await db.query.patients.findMany({
       where: whereClause,
@@ -134,11 +140,11 @@ export const searchPatients = async (req: Request, res: Response) => {
   }
 };
 
-export const getPatientById = async (req: Request, res: Response) => {
+export const getPatientById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
-    const chuId = user.chuId;
+    const user = req.user;
+    const chuId = user?.chuId;
     const patient = await getPatientData(id);
 
     if (!patient) {
@@ -146,10 +152,9 @@ export const getPatientById = async (req: Request, res: Response) => {
       return;
     }
 
-    if (user.role !== "admin" || chuId) {
-      if (patient.chuId !== chuId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+    // Super Admin can access any patient, others only their CHU's patients
+    if (!isSuperAdmin(user) && patient.chuId !== chuId) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     res.json(patient);
@@ -186,12 +191,12 @@ const getPatientData = async (id: string) => {
   };
 };
 
-export const updatePatientSection = async (req: Request, res: Response) => {
+export const updatePatientSection = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { values, consultationTypeId } = req.body;
-    const user = (req as any).user;
-    const chuId = user.chuId;
+    const user = req.user;
+    const chuId = user?.chuId;
 
     const patient = await db.query.patients.findFirst({
       where: eq(patients.id, id),
@@ -201,10 +206,9 @@ export const updatePatientSection = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Patient not found" });
     }
 
-    if (user.role !== "admin" || chuId) {
-      if (patient.chuId !== chuId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+    // Super Admin can update any patient, others only their CHU's patients
+    if (!isSuperAdmin(user) && patient.chuId !== chuId) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     // Validation générique pour accepter tout objet JSON
@@ -228,7 +232,7 @@ export const updatePatientSection = async (req: Request, res: Response) => {
         patientId: id,
         consultationTypeId,
         data: values,
-        updatedBy: (req as any).user?.id, // Track who updated
+        updatedBy: user?.id,
       })
       .onConflictDoUpdate({
         target: [
@@ -238,7 +242,7 @@ export const updatePatientSection = async (req: Request, res: Response) => {
         set: {
           data: values,
           updatedAt: new Date(),
-          updatedBy: (req as any).user?.id, // Track who updated
+          updatedBy: user?.id,
         },
       });
 
@@ -254,11 +258,11 @@ export const updatePatientSection = async (req: Request, res: Response) => {
   }
 };
 
-export const deletePatient = async (req: Request, res: Response) => {
+export const deletePatient = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const user = (req as any).user;
-    const chuId = user.chuId;
+    const user = req.user;
+    const chuId = user?.chuId;
 
     const patient = await db.query.patients.findFirst({
       where: eq(patients.id, id),
@@ -268,10 +272,9 @@ export const deletePatient = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Patient not found" });
     }
 
-    if (user.role !== "admin" || chuId) {
-      if (patient.chuId !== chuId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+    // Super Admin can delete any patient, others only their CHU's patients
+    if (!isSuperAdmin(user) && patient.chuId !== chuId) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     await db
@@ -289,12 +292,12 @@ export const deletePatient = async (req: Request, res: Response) => {
   }
 };
 
-export const updatePatientCore = async (req: Request, res: Response) => {
+export const updatePatientCore = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { name, prenom, ipp, dob, sexe } = req.body;
-    const user = (req as any).user;
-    const chuId = user.chuId;
+    const user = req.user;
+    const chuId = user?.chuId;
 
     const patient = await db.query.patients.findFirst({
       where: eq(patients.id, id),
@@ -304,10 +307,9 @@ export const updatePatientCore = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Patient not found" });
     }
 
-    if (user.role !== "admin" || chuId) {
-      if (patient.chuId !== chuId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+    // Super Admin can update any patient, others only their CHU's patients
+    if (!isSuperAdmin(user) && patient.chuId !== chuId) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     // Basic validation
@@ -320,10 +322,9 @@ export const updatePatientCore = async (req: Request, res: Response) => {
 
     // Check for duplicates (excluding current patient)
     // HDS: Fetch all and filter in memory because fields are encrypted
-     const whereClause =
-      user.role === "admin" && !chuId
-        ? eq(patients.deleted, false)
-        : and(eq(patients.chuId, chuId), eq(patients.deleted, false));
+    const whereClause = isSuperAdmin(user)
+      ? eq(patients.deleted, false)
+      : and(eq(patients.chuId, chuId as string), eq(patients.deleted, false));
 
     const allPatients = await db.query.patients.findMany({
       where: whereClause,

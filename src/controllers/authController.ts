@@ -4,10 +4,19 @@ import { users } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { hashPassword, comparePassword, generateToken } from "../utils/auth";
 import { AUTH_COOKIE_NAME } from "../config/auth";
-import { registerSchema } from "../validation/authSchema";
+import { registerSchema, loginSchema } from "../validation/authSchema";
 
 export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  // Validate input
+  const validationResult = loginSchema.safeParse(req.body);
+  if (!validationResult.success) {
+    return res.status(400).json({ 
+      success: false, 
+      message: "Identifiants invalides" 
+    });
+  }
+
+  const { email, password } = validationResult.data;
 
   try {
     const user = await db.query.users.findFirst({
