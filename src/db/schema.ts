@@ -132,14 +132,13 @@ export const patientsRelations = relations(patients, ({ one }) => ({
   }),
 }));
 
-// HDS: Audit Logs for traceability
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: varchar("user_id", { length: 255 }), // Nullable if system action or unauthenticated (should be avoided)
-  action: varchar("action", { length: 50 }).notNull(), // READ, WRITE, DELETE, LOGIN
-  resource: varchar("resource", { length: 100 }).notNull(), // /api/patient/123
-  details: jsonb("details"), // Metadata (IP, UserAgent, etc.) - NO SENSITIVE DATA
-  status: varchar("status", { length: 20 }).notNull(), // SUCCESS, FAILURE
+  userId: varchar("user_id", { length: 255 }), 
+  action: varchar("action", { length: 50 }).notNull(), 
+  resource: varchar("resource", { length: 100 }).notNull(), 
+  details: jsonb("details"), 
+  status: varchar("status", { length: 20 }).notNull(), 
   createdAt: timestamp("created_at").defaultNow(),
 });
 

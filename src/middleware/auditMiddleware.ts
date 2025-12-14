@@ -7,29 +7,24 @@ export const auditMiddleware = (action: string) => {
     const originalSend = res.send;
 
     res.send = function (body) {
-      // Capture userId at the moment of sending response
       let userId = req.user ? req.user.id : null;
       const resource = req.originalUrl;
       const status = res.statusCode >= 400 ? "FAILURE" : "SUCCESS";
 
-      // Try to extract userId from response body for LOGIN/REGISTER actions
       if (
         !userId &&
         (action === "LOGIN" || action === "REGISTER") &&
         status === "SUCCESS"
       ) {
         try {
-          // body might be a JSON string or an object
           const data = typeof body === "string" ? JSON.parse(body) : body;
           if (data.user && data.user.id) {
             userId = data.user.id;
           }
         } catch (e) {
-          // Ignore parsing errors
         }
       }
 
-      // Sanitize data recursively to remove sensitive PII/PHI
       const sanitizeData = (data: any): any => {
         if (!data) return null;
         if (typeof data !== "object") return data;
@@ -64,7 +59,6 @@ export const auditMiddleware = (action: string) => {
         return sanitized;
       };
 
-      // Fire and forget audit log
       logAudit(
         userId,
         action,
