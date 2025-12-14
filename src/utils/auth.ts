@@ -59,3 +59,7 @@ export const verifyToken = (token: string): UserPayload => {
   return jwt.verify(token, getJwtSecret()) as UserPayload;
 };
 
+export const isSuperAdmin = (user?: UserPayload): boolean => {
+  return user?.role === "master_admin" && !user.chuId;
+};
+

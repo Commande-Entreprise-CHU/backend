@@ -3,7 +3,7 @@ import { db } from "../db";
 import { consultationTypes, consultationTemplates } from "../db/schema";
 import { eq, desc, and, asc } from "drizzle-orm";
 
-export const getConsultationTypes = async (req: Request, res: Response) => {
+export const getConsultationTypes = async (_req: Request, res: Response) => {
   try {
     const types = await db
       .select()
@@ -79,7 +79,6 @@ export const createTemplateVersion = async (req: Request, res: Response) => {
     const { typeId } = req.params;
     const { version, structure, template, isActive } = req.body;
 
-    // If setting as active, deactivate others
     if (isActive) {
       await db
         .update(consultationTemplates)
@@ -111,17 +110,15 @@ export const setActiveTemplate = async (req: Request, res: Response) => {
   try {
     const { templateId } = req.params;
 
-    // Get the template to find its typeId
     const [template] = await db
       .select()
       .from(consultationTemplates)
       .where(eq(consultationTemplates.id, templateId));
 
     if (!template) {
-      return res.status(404).json({ error: "Template not found" });
+      return res.status(404).json({ error: "Modèle non trouvé" });
     }
 
-    // Deactivate all for this type
     await db
       .update(consultationTemplates)
       .set({ isActive: false })
@@ -132,17 +129,16 @@ export const setActiveTemplate = async (req: Request, res: Response) => {
         )
       );
 
-    // Activate the selected one
-    const [updatedTemplate] = await db
+    const [updatedTemplateResult] = await db
       .update(consultationTemplates)
       .set({ isActive: true })
       .where(eq(consultationTemplates.id, templateId))
       .returning();
 
-    res.json(updatedTemplate);
+    res.json(updatedTemplateResult);
   } catch (error) {
     console.error("Error setting active template:", error);
-    res.status(500).json({ error: "Failed to set active template" });
+    res.status(500).json({ error: "Échec de l'activation du modèle" });
   }
 };
 
@@ -150,14 +146,13 @@ export const getActiveTemplateByType = async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
 
-    // Find type by slug
     const [type] = await db
       .select()
       .from(consultationTypes)
       .where(eq(consultationTypes.slug, slug));
 
     if (!type) {
-      return res.status(404).json({ error: "Consultation type not found" });
+      return res.status(404).json({ error: "Type de consultation non trouvé" });
     }
 
     const [activeTemplate] = await db
@@ -171,13 +166,13 @@ export const getActiveTemplateByType = async (req: Request, res: Response) => {
       );
 
     if (!activeTemplate) {
-      return res.status(404).json({ error: "No active template found" });
+      return res.status(404).json({ error: "Aucun modèle actif trouvé" });
     }
 
     res.json(activeTemplate);
   } catch (error) {
     console.error("Error fetching active template:", error);
-    res.status(500).json({ error: "Failed to fetch active template" });
+    res.status(500).json({ error: "Échec de la récupération du modèle actif" });
   }
 };
 
@@ -191,20 +186,20 @@ export const deleteTemplateVersion = async (req: Request, res: Response) => {
       .returning();
 
     if (!deletedTemplate) {
-      return res.status(404).json({ error: "Template not found" });
+      return res.status(404).json({ error: "Modèle non trouvé" });
     }
 
-    res.json({ success: true, message: "Template deleted successfully" });
+    res.json({ success: true, message: "Modèle supprimé avec succès" });
   } catch (error) {
     console.error("Error deleting template version:", error);
-    res.status(500).json({ error: "Failed to delete template version" });
+    res.status(500).json({ error: "Échec de la suppression de la version du modèle" });
   }
 };
 
 export const deleteConsultationType = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    console.log("Attempting to delete consultation type:", id);
+
 
     const [deletedType] = await db
       .update(consultationTypes)

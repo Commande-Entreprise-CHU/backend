@@ -20,7 +20,7 @@ export const authenticateToken = (
   const token = headerToken || cookieToken;
 
   if (!token) {
-    return res.status(401).json({ message: "Access token required" });
+    return res.status(401).json({ message: "Jeton d'accès requis" });
   }
 
   try {
@@ -31,7 +31,7 @@ export const authenticateToken = (
     if (cookieToken) {
       res.clearCookie(AUTH_COOKIE_NAME);
     }
-    return res.status(403).json({ message: "Invalid or expired token" });
+    return res.status(403).json({ message: "Jeton invalide ou expiré" });
   }
 };
 
@@ -44,7 +44,7 @@ export const isAdmin = (
   if (req.user && (req.user.role === "master_admin" || req.user.role === "chu_admin")) {
     next();
   } else {
-    res.status(403).json({ message: "Admin access required" });
+    res.status(403).json({ message: "Accès administrateur requis" });
   }
 };
 
@@ -57,7 +57,7 @@ export const isMasterAdmin = (
   if (req.user && req.user.role === "master_admin") {
     next();
   } else {
-    res.status(403).json({ message: "Master Admin access required" });
+    res.status(403).json({ message: "Accès Master Admin requis" });
   }
 };
 
@@ -70,7 +70,7 @@ export const isChuAdminOrMaster = (
   if (req.user && (req.user.role === "master_admin" || req.user.role === "chu_admin")) {
     next();
   } else {
-    res.status(403).json({ message: "Admin access required" });
+    res.status(403).json({ message: "Accès administrateur requis" });
   }
 };
 
@@ -80,7 +80,7 @@ export const requireRole = (...allowedRoles: UserRole[]) => {
     if (req.user && allowedRoles.includes(req.user.role as UserRole)) {
       next();
     } else {
-      res.status(403).json({ message: `Access denied. Required roles: ${allowedRoles.join(", ")}` });
+      res.status(403).json({ message: `Accès refusé. Rôles requis: ${allowedRoles.join(", ")}` });
     }
   };
 };

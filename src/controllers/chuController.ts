@@ -20,7 +20,7 @@ export const createChu = async (req: Request, res: Response) => {
   }
 };
 
-export const getChus = async (req: Request, res: Response) => {
+export const getChus = async (_req: Request, res: Response) => {
   try {
     const allChus = await db.select().from(chus);
     res.json(allChus);

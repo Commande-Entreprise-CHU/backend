@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { db } from "../db";
 import { users } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { AuthRequest } from "../middleware/authMiddleware";
 import { UserRole } from "../utils/auth";
@@ -27,13 +27,11 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
       })
       .from(users);
     
-    // CHU Admin can only see users from their CHU
     if (currentUser?.role === "chu_admin" && currentUser.chuId) {
       const allUsers = await query.where(eq(users.chuId, currentUser.chuId));
       return res.json(allUsers);
     }
     
-    // Master Admin sees all users
     const allUsers = await query;
     res.json(allUsers);
   } catch (error) {
@@ -48,7 +46,6 @@ export const updateUserStatus = async (req: AuthRequest, res: Response) => {
     const { isActive } = req.body;
     const currentUser = req.user;
 
-    // HDS: Validate UUID format
     const idValidation = uuidSchema.safeParse(id);
     if (!idValidation.success) {
       return res.status(400).json({ message: "ID utilisateur invalide" });
@@ -58,7 +55,6 @@ export const updateUserStatus = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "isActive doit être un booléen" });
     }
 
-    // CHU Admin can only update users from their CHU
     if (currentUser?.role === "chu_admin") {
       const targetUser = await db.query.users.findFirst({
         where: eq(users.id, id),
@@ -96,7 +92,6 @@ export const updateUserChu = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { chuId } = req.body;
 
-    // HDS: Validate UUID format
     const idValidation = uuidSchema.safeParse(id);
     if (!idValidation.success) {
       return res.status(400).json({ message: "ID utilisateur invalide" });
@@ -123,22 +118,17 @@ export const updateUserChu = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Admin: Update user role
-// - Master Admin can assign any role to any user
-// - CHU Admin can only assign 'doctor' role to users in their CHU
 export const updateUserRole = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
     const currentUser = req.user;
 
-    // HDS: Validate UUID format
     const idValidation = uuidSchema.safeParse(id);
     if (!idValidation.success) {
       return res.status(400).json({ message: "ID utilisateur invalide" });
     }
 
-    // Validate role
     const roleValidation = roleSchema.safeParse(role);
     if (!roleValidation.success) {
       return res.status(400).json({ 
@@ -146,16 +136,13 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // CHU Admin restrictions
     if (currentUser?.role === "chu_admin") {
-      // CHU Admin can only assign 'doctor' role
       if (role !== "doctor") {
         return res.status(403).json({ 
           message: "Vous ne pouvez assigner que le rôle 'Médecin'" 
         });
       }
 
-      // CHU Admin can only modify users from their CHU
       const targetUser = await db.query.users.findFirst({
         where: eq(users.id, id),
         columns: { chuId: true },

@@ -18,7 +18,5 @@ export const logAudit = async (
     });
   } catch (error) {
     console.error("Failed to write audit log:", error);
-    // We do not throw here to avoid breaking the main application flow,
-    // but in a high-security context, this might be a critical failure.
   }
 };

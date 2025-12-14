@@ -7,7 +7,6 @@ import { AUTH_COOKIE_NAME } from "../config/auth";
 import { registerSchema, loginSchema } from "../validation/authSchema";
 
 export const login = async (req: Request, res: Response) => {
-  // Validate input
   const validationResult = loginSchema.safeParse(req.body);
   if (!validationResult.success) {
     return res.status(400).json({ 
@@ -79,7 +78,7 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const logout = async (req: Request, res: Response) => {
+export const logout = async (_req: Request, res: Response) => {
   const isProduction = process.env.APP_ENV === "production";
   res.clearCookie(AUTH_COOKIE_NAME, {
     httpOnly: true,
@@ -91,7 +90,6 @@ export const logout = async (req: Request, res: Response) => {
 };
 
 export const register = async (req: Request, res: Response) => {
-  // HDS: Validate input with password policy
   const validationResult = registerSchema.safeParse(req.body);
   if (!validationResult.success) {
     const errors = validationResult.error.flatten().fieldErrors;
@@ -139,7 +137,7 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-export const getPendingUsers = async (req: Request, res: Response) => {
+export const getPendingUsers = async (_req: Request, res: Response) => {
   try {
     const pendingUsers = await db.query.users.findMany({
       where: eq(users.isActive, false),

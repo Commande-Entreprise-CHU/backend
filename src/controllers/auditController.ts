@@ -3,7 +3,7 @@ import { db } from "../db";
 import { auditLogs, users } from "../db/schema";
 import { desc, eq } from "drizzle-orm";
 
-export const getAuditLogs = async (req: Request, res: Response) => {
+export const getAuditLogs = async (_req: Request, res: Response) => {
   try {
     const logs = await db
       .select({

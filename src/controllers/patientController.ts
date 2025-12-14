@@ -3,16 +3,11 @@ import { db } from "../db";
 import {
   patients,
   patientConsultations,
-  consultationTypes,
 } from "../db/schema";
-import { eq, and, ilike, or } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { patientSchema } from "../validation/patientSchema";
 import { AuthRequest } from "../middleware/authMiddleware";
-
-// Helper to check if user is a super admin (master_admin without CHU restriction)
-const isSuperAdmin = (user: AuthRequest["user"]): boolean => {
-  return user?.role === "master_admin" && !user.chuId;
-};
+import { isSuperAdmin } from "../utils/auth";
 
 export const createPatient = async (req: AuthRequest, res: Response) => {
   try {
@@ -29,8 +24,6 @@ export const createPatient = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const chuId = user?.chuId;
 
-    // HDS: Fetch all and filter in memory because fields are encrypted with random IV
-    // Super Admin (master_admin without CHU) can see all patients
     const whereClause = isSuperAdmin(user)
       ? undefined
       : eq(patients.chuId, chuId as string);
@@ -88,8 +81,6 @@ export const searchPatients = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const chuId = user?.chuId;
 
-    // HDS: Fetch all and filter in memory because fields are encrypted
-    // Super Admin can see all patients, others only their CHU's patients
     const whereClause = isSuperAdmin(user)
       ? eq(patients.deleted, false)
       : and(eq(patients.chuId, chuId as string), eq(patients.deleted, false));
@@ -148,19 +139,18 @@ export const getPatientById = async (req: AuthRequest, res: Response) => {
     const patient = await getPatientData(id);
 
     if (!patient) {
-      res.status(404).json({ message: "Not found" });
+      res.status(404).json({ message: "Patient non trouvé" });
       return;
     }
 
-    // Super Admin can access any patient, others only their CHU's patients
     if (!isSuperAdmin(user) && patient.chuId !== chuId) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ message: "Accès refusé" });
     }
 
     res.json(patient);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error fetching patient" });
+    res.status(500).json({ message: "Erreur lors de la récupération du patient" });
   }
 };
 
@@ -171,7 +161,8 @@ const getPatientData = async (id: string) => {
 
   if (!patient) return null;
 
-  // Fetch dynamic consultations
+  if (!patient) return null;
+  
   const consultations = await db.query.patientConsultations.findMany({
     where: eq(patientConsultations.patientId, id),
     with: {
@@ -203,15 +194,13 @@ export const updatePatientSection = async (req: AuthRequest, res: Response) => {
     });
 
     if (!patient) {
-      return res.status(404).json({ message: "Patient not found" });
+      return res.status(404).json({ message: "Patient non trouvé" });
     }
 
-    // Super Admin can update any patient, others only their CHU's patients
     if (!isSuperAdmin(user) && patient.chuId !== chuId) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ message: "Accès refusé" });
     }
 
-    // Validation générique pour accepter tout objet JSON
     if (!values || typeof values !== "object") {
       return res.status(400).json({
         success: false,
@@ -269,12 +258,11 @@ export const deletePatient = async (req: AuthRequest, res: Response) => {
     });
 
     if (!patient) {
-      return res.status(404).json({ message: "Patient not found" });
+      return res.status(404).json({ message: "Patient non trouvé" });
     }
 
-    // Super Admin can delete any patient, others only their CHU's patients
     if (!isSuperAdmin(user) && patient.chuId !== chuId) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ message: "Accès refusé" });
     }
 
     await db
@@ -304,15 +292,13 @@ export const updatePatientCore = async (req: AuthRequest, res: Response) => {
     });
 
     if (!patient) {
-      return res.status(404).json({ message: "Patient not found" });
+      return res.status(404).json({ message: "Patient non trouvé" });
     }
 
-    // Super Admin can update any patient, others only their CHU's patients
     if (!isSuperAdmin(user) && patient.chuId !== chuId) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ message: "Accès refusé" });
     }
 
-    // Basic validation
     if (!name || !prenom || !dob || !sexe) {
       return res.status(400).json({
         success: false,
@@ -320,8 +306,6 @@ export const updatePatientCore = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Check for duplicates (excluding current patient)
-    // HDS: Fetch all and filter in memory because fields are encrypted
     const whereClause = isSuperAdmin(user)
       ? eq(patients.deleted, false)
       : and(eq(patients.chuId, chuId as string), eq(patients.deleted, false));
